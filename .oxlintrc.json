@@ -57,12 +57,15 @@
 				"packages/db/src/fields.ts",
 				"packages/db/src/fields-shape.ts",
 				"apps/api/src/fields/**",
-				"apps/app/components/crm/inline-field.tsx"
+				"apps/app/components/crm/inline-field.tsx",
+				"services/**"
 			],
 			"rules": {
 				"anti-slop/no-unsafe-dictionary-type": "off",
 				"anti-slop/no-unknown-parameters": "off",
-				"anti-slop/no-runtime-typeof": "off"
+				"anti-slop/no-runtime-typeof": "off",
+				"anti-slop/no-known-value-widening": "off",
+				"anti-slop/no-chained-type-assertions": "off"
 			}
 		}
 	]

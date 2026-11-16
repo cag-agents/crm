@@ -20,7 +20,7 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { cors } from "hono/cors";
 import { webhookQueue } from "./queue";
-import { verifyMetaSignature, verifyTelegramIP } from "./security";
+import { verifyMetaSignature } from "./security";
 import type { WebhookEvent, ChannelType } from "./types";
 
 const app = new Hono();
@@ -154,8 +154,7 @@ app.post("/webhooks/whatsapp", async (c) => {
 app.post("/webhooks/telegram", async (c) => {
   const startTime = Date.now();
 
-  // Telegram uses IP whitelist + secret token for verification
-  const clientIP = c.req.header("x-forwarded-for") ?? c.req.header("x-real-ip") ?? "";
+  // Telegram uses secret token for verification
   const secretToken = c.req.header("x-telegram-bot-api-secret-token");
 
   if (secretToken !== process.env.TELEGRAM_WEBHOOK_SECRET) {

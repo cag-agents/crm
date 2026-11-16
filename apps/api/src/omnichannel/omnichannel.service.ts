@@ -175,6 +175,51 @@ export class OmnichannelService {
 			} catch (err) {
 				this.logger.warn(`Could not contact Meta service: ${err}`);
 			}
+		} else if (conv.channel.type === "WHATSAPP") {
+			try {
+				const waPort = process.env.WHATSAPP_SERVICE_PORT || "3004";
+				const waRes = await fetch(`http://localhost:${waPort}/api/send`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						channelId: conv.channelId,
+						recipientPhone: conv.externalThreadId,
+						text,
+					}),
+				});
+				const waData = (await waRes.json()) as {
+					success?: boolean;
+					messageId?: string;
+				};
+				if (waData?.messageId) {
+					externalMessageId = waData.messageId;
+				}
+			} catch (err) {
+				this.logger.warn(`Could not contact WhatsApp service: ${err}`);
+			}
+		} else if (conv.channel.type === "EMAIL") {
+			try {
+				const emailPort = process.env.EMAIL_SERVICE_PORT || "3005";
+				const emailRes = await fetch(`http://localhost:${emailPort}/api/email/send`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						channelId: conv.channelId,
+						to: [conv.externalThreadId],
+						subject: `Re: ${conv.title || "Support Thread"}`,
+						body: text,
+					}),
+				});
+				const emailData = (await emailRes.json()) as {
+					success?: boolean;
+					messageId?: string;
+				};
+				if (emailData?.messageId) {
+					externalMessageId = emailData.messageId;
+				}
+			} catch (err) {
+				this.logger.warn(`Could not contact Email service: ${err}`);
+			}
 		}
 
 		// 2. Persist message in database

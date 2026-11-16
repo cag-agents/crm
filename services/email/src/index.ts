@@ -162,7 +162,7 @@ app.post("/api/email/inbound", async (c) => {
 	}
 });
 
-const port = Number(process.env.EMAIL_SERVICE_PORT || 3004);
+const port = Number(process.env.EMAIL_SERVICE_PORT || 3005);
 
 export default {
 	port,

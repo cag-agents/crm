@@ -5,10 +5,11 @@ import { ConversationAttachmentsController } from "./conversation-attachments.co
 import { ConversationSharingService } from "./conversation-sharing.service";
 import { ConversationsRouter } from "./conversations.router";
 import { ConversationsService } from "./conversations.service";
+import { WebhookIngestController } from "./webhook-ingest.controller";
 
 @Module({
 	imports: [TrpcModule, AgentModule],
-	controllers: [ConversationAttachmentsController],
+	controllers: [ConversationAttachmentsController, WebhookIngestController],
 	providers: [
 		ConversationsService,
 		ConversationSharingService,

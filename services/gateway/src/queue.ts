@@ -9,7 +9,9 @@
 import { Queue } from "bullmq";
 import { redis } from "./redis";
 
-export const webhookQueue = new Queue("webhook-events", {
+export const OMNICHANNEL_QUEUE_NAME = "omnichannel-webhooks";
+
+export const webhookQueue = new Queue(OMNICHANNEL_QUEUE_NAME, {
 	connection: redis,
 	defaultJobOptions: {
 		removeOnComplete: 1000, // keep last 1000 completed for debugging
@@ -22,4 +24,4 @@ export const webhookQueue = new Queue("webhook-events", {
 	},
 });
 
-console.log("[gateway] Webhook queue initialized");
+console.log(`[gateway] Webhook queue '${OMNICHANNEL_QUEUE_NAME}' initialized`);

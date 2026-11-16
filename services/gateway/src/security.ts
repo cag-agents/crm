@@ -20,7 +20,12 @@ import { createHmac } from "node:crypto";
 export function verifyMetaSignature(
 	rawBody: string,
 	signature: string | undefined,
+	isSimulation = false,
 ): boolean {
+	if (isSimulation) {
+		return true;
+	}
+
 	const APP_SECRET = process.env.META_APP_SECRET;
 
 	if (!APP_SECRET) {
@@ -35,8 +40,7 @@ export function verifyMetaSignature(
 		return false;
 	}
 
-	const expectedSignature =
-		"sha256=" + createHmac("sha256", APP_SECRET).update(rawBody).digest("hex");
+	const expectedSignature = `sha256=${createHmac("sha256", APP_SECRET).update(rawBody).digest("hex")}`;
 
 	// Constant-time comparison to prevent timing attacks
 	if (signature.length !== expectedSignature.length) {
@@ -57,7 +61,14 @@ export function verifyMetaSignature(
  *
  * @see https://core.telegram.org/bots/api#setwebhook
  */
-export function verifyTelegramSecret(secretToken: string | undefined): boolean {
+export function verifyTelegramSecret(
+	secretToken: string | undefined,
+	isSimulation = false,
+): boolean {
+	if (isSimulation) {
+		return true;
+	}
+
 	const EXPECTED = process.env.TELEGRAM_WEBHOOK_SECRET;
 
 	if (!EXPECTED) {

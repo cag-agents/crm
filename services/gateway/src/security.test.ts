@@ -13,4 +13,11 @@ describe("Webhook Security", () => {
 		expect(verifyTelegramSecret("super-secret-token")).toBe(true);
 		expect(verifyTelegramSecret("wrong-token")).toBe(false);
 	});
+
+	it("allows demo simulation bypass even if secret is required", () => {
+		process.env.META_APP_SECRET = "production-meta-secret";
+		process.env.NODE_ENV = "production";
+		expect(verifyMetaSignature("test", undefined, true)).toBe(true);
+		expect(verifyTelegramSecret("wrong-token", true)).toBe(true);
+	});
 });

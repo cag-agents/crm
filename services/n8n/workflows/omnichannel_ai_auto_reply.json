@@ -1,0 +1,176 @@
+{
+  "name": "Omnichannel AI Auto-Responder",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-reply",
+        "options": {}
+      },
+      "id": "node-webhook-inbound",
+      "name": "Inbound Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract channel, text, and sender information\nconst data = $input.first().json.body || $input.first().json;\n\nreturn [{\n  json: {\n    channelId: data.channelId || 'default',\n    channelType: data.channelType || 'FACEBOOK',\n    recipientId: data.senderId || data.recipientId,\n    messageText: data.text || data.content || '',\n    conversationId: data.conversationId,\n    receivedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "node-parse-payload",
+      "name": "Normalize Channel Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.messageText.toLowerCase() }}",
+              "operation": "contains",
+              "value2": "pricing"
+            }
+          ]
+        }
+      },
+      "id": "node-intent-classifier",
+      "name": "Classify Intent (Sales/Pricing)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "replyText",
+              "value": "Thanks for reaching out! Our CRM plans start at Free for small teams, with custom enterprise plans. Would you like to schedule a quick 10-minute demo with our team?"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-pricing-response",
+      "name": "Pricing AI Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [920, 200]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "replyText",
+              "value": "Hi there! Thanks for your message. We have received your inquiry and an agent from our support team will get back to you shortly."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-general-response",
+      "name": "General AI Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [920, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3003/api/send",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "channelId",
+              "value": "={{ $json.channelId }}"
+            },
+            {
+              "name": "recipientId",
+              "value": "={{ $json.recipientId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.replyText }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-dispatch-reply",
+      "name": "Dispatch Reply via Channel API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1180, 300]
+    }
+  ],
+  "connections": {
+    "Inbound Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Channel Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Channel Event": {
+      "main": [
+        [
+          {
+            "node": "Classify Intent (Sales/Pricing)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Intent (Sales/Pricing)": {
+      "main": [
+        [
+          {
+            "node": "Pricing AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "General AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pricing AI Response": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Reply via Channel API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "General AI Response": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Reply via Channel API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {}
+}

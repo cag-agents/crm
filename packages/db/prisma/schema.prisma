@@ -50,6 +50,9 @@ model User {
 
   apiKeys Apikey[]
 
+  omnichannelConversations Conversation[] @relation("ConversationAssignee")
+  sentMessages             Message[]      @relation("MessageSenderUser")
+
   @@unique([email])
   @@map("user")
 }
@@ -328,6 +331,7 @@ model Company {
   emailThreads   EmailThread[]
   calendarEvents CalendarEvent[]
   fieldValues    FieldValue[]
+  omnichannelConversations Conversation[] @relation("CompanyConversations")
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
@@ -392,6 +396,7 @@ model Contact {
   fieldValues     FieldValue[]
   visitors        TrackedVisitor[]   @relation("VisitorContact")
   submissions     FormSubmission[]   @relation("SubmissionContact")
+  omnichannelConversations Conversation[] @relation("ContactConversations")
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
@@ -1486,6 +1491,7 @@ model Organization {
   website     String?
   members     Member[]
   invitations Invitation[]
+  channels    Channel[]
 
   @@unique([slug])
   @@map("organization")
@@ -1583,3 +1589,183 @@ model Apikey {
   @@index([key])
   @@map("apikey")
 }
+
+// -----------------------------------------------------------------------------
+// Omnichannel Core Models & Enums
+// -----------------------------------------------------------------------------
+
+enum ChannelType {
+  WHATSAPP
+  TELEGRAM
+  FACEBOOK
+  INSTAGRAM
+  EMAIL
+  SMS
+  LINKEDIN
+  GENERIC
+}
+
+enum ChannelStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+  PENDING
+}
+
+enum ConversationStatus {
+  OPEN
+  CLOSED
+  SNOOZED
+  PENDING
+}
+
+enum ConversationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageSenderType {
+  CONTACT
+  USER
+  BOT
+  SYSTEM
+}
+
+enum MessageContentType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  LOCATION
+  TEMPLATE
+}
+
+enum MessageDeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum WebhookEventStatus {
+  RECEIVED
+  QUEUED
+  PROCESSED
+  FAILED
+}
+
+model Channel {
+  id             String        @id @default(cuid())
+  name           String
+  type           ChannelType
+  status         ChannelStatus @default(PENDING)
+  identifier     String?
+  credentials    Json?
+  config         Json?
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  conversations Conversation[]
+  webhookEvents WebhookEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type, status])
+  @@index([organizationId])
+  @@map("channel")
+}
+
+model Conversation {
+  id               String               @id @default(cuid())
+  channelId        String
+  channel          Channel              @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  contactId        String?
+  contact          Contact?             @relation("ContactConversations", fields: [contactId], references: [id], onDelete: SetNull)
+  companyId        String?
+  company          Company?             @relation("CompanyConversations", fields: [companyId], references: [id], onDelete: SetNull)
+  externalThreadId String
+  title            String?
+  status           ConversationStatus   @default(OPEN)
+  priority         ConversationPriority @default(NORMAL)
+  assignedToId     String?
+  assignedTo       User?                @relation("ConversationAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  lastMessageAt      DateTime  @default(now())
+  lastMessageSnippet String?
+  unreadCount        Int       @default(0)
+  metadata           Json?
+  closedAt           DateTime?
+
+  messages Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([channelId, externalThreadId])
+  @@index([channelId])
+  @@index([status, lastMessageAt])
+  @@index([contactId])
+  @@index([assignedToId])
+  @@map("conversation")
+}
+
+model Message {
+  id             String                @id @default(cuid())
+  conversationId String
+  conversation   Conversation          @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  externalMessageId String?
+  direction         MessageDirection
+  senderType        MessageSenderType     @default(CONTACT)
+  senderId          String?
+  senderUser        User?                 @relation("MessageSenderUser", fields: [senderId], references: [id], onDelete: SetNull)
+  senderName        String?
+
+  content     String
+  contentType MessageContentType    @default(TEXT)
+  mediaUrl    String?
+  mediaType   String?
+
+  deliveryStatus MessageDeliveryStatus @default(SENT)
+  errorMessage   String?
+  metadata       Json?
+
+  sentAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([conversationId, sentAt])
+  @@index([externalMessageId])
+  @@map("message")
+}
+
+model WebhookEvent {
+  id              String             @id @default(cuid())
+  channelId       String?
+  channel         Channel?           @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  channelType     ChannelType
+  externalEventId String?
+  eventType       String?
+  payload         Json
+  headers         Json?
+  status          WebhookEventStatus @default(RECEIVED)
+  errorMessage    String?
+  processedAt     DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([channelType, status])
+  @@index([externalEventId])
+  @@map("webhookEvent")
+}
+

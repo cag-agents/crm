@@ -4,6 +4,9 @@ import { resolveFavicon } from "../src/favicon";
 import { fieldKeyFromLabel } from "../src/fields-shape";
 import {
 	ActivityType,
+	AgentActionStatus,
+	AgentRunStatus,
+	AgentTriggerType,
 	DealStage,
 	type FieldEntity,
 	FieldType,
@@ -758,7 +761,9 @@ async function seedFieldValues(
 
 	for (const company of companies) {
 		const category =
-			(categoryMap as Record<string, string>)[company.domain] ?? "D2C";
+			company.domain in categoryMap
+				? categoryMap[company.domain as keyof typeof categoryMap]
+				: "D2C";
 		const optId = optionIdFor(fields.sponsorCategory, category);
 		if (optId) {
 			await db.fieldValue.upsert({
@@ -1081,16 +1086,16 @@ async function seedPreConfiguredAgents(ownerId: string): Promise<void> {
 		where: { id: "agent-slave-1" },
 		create: {
 			id: "agent-slave-1",
-			name: "Slave 1: Brand Sponsorship & Collab Triage Agent",
+			name: "Slave 1: Brand Sponsorship Triage",
 			description:
-				"Triages inbound brand inquiries, extracts campaign requirements, and calculates media kit rate cards.",
+				"Autonomously researches inbound sponsor brands, evaluates deliverable budgets in INR against creator rate cards, updates Collab Deal stages, and requests Host approval for high-value deals.",
 			status: "LIVE",
 			createdById: ownerId,
 		},
 		update: {
-			name: "Slave 1: Brand Sponsorship & Collab Triage Agent",
+			name: "Slave 1: Brand Sponsorship Triage",
 			description:
-				"Triages inbound brand inquiries, extracts campaign requirements, and calculates media kit rate cards.",
+				"Autonomously researches inbound sponsor brands, evaluates deliverable budgets in INR against creator rate cards, updates Collab Deal stages, and requests Host approval for high-value deals.",
 			status: "LIVE",
 		},
 	});
@@ -1102,12 +1107,78 @@ async function seedPreConfiguredAgents(ownerId: string): Promise<void> {
 			agentId: "agent-slave-1",
 			number: 1,
 			status: "DEPLOYED",
-			instructions:
-				"Monitor inbound email and message inquiries from brands, evaluate fit against creator guidelines, and prepare brand research briefs.",
-			manifest: { tools: ["search_crm", "draft_reply", "calculate_rates"] },
+			instructions: `# Slave 1: Brand Sponsorship & Collab Triage Agent
+
+You are the autonomous Brand Sponsorship & Collab Triage Agent for the creator ecosystem.
+Your mission is to evaluate inbound sponsor brands, verify deliverable budgets in INR against standard creator rate cards, update Collab Deal stages, and escalate high-value opportunities to the Host creator.
+
+## Operational Workflow
+
+1. **Trigger Handling & Data Retrieval**:
+   - When a deal is created or moves stage (\`deal.created\`, \`deal.stage.changed\`), inspect the collab record via \`read_crm_record\`.
+   - Cross-reference the associated brand (\`company\`) domain, website, target platforms, and previous sponsorship history via \`query_crm\`.
+
+2. **Rate Card Evaluation**:
+   - Compare proposed budget against minimum creator rate cards:
+     - Dedicated YouTube Integration: ₹4,00,000 - ₹8,00,000
+     - Instagram Reels (60s): ₹1,50,000 - ₹3,00,000
+     - Multi-Platform Bundle (YT Dedicated + 2x Reels): ₹6,00,000+
+     - Story/Telegram Blast: ₹50,000 - ₹1,00,000
+   - Identify scope deliverables: Dedicated vs Integrated, Exclusivity window (e.g., 30-day competitive blackout), and Usage rights (organic vs paid ads/whitelisting).
+
+3. **Stage Automation & Decisioning**:
+   - For deals with clear scope and budget >= ₹2,00,000:
+     - Transition deal stage to \`DECISION_MAKER_BOUGHT_IN\` ("Rate Negotiation").
+     - Log a structured triage assessment note on the deal via \`create_crm_activity\`.
+     - Request Host approval using \`ask_question\` with details on deliverables, timeline, exclusivity, and proposed payout.
+   - For inquiries lacking budget or deliverables scope:
+     - Advance to \`QUALIFIED_TO_BUY\` ("Media Kit Sent") and dispatch media kit + rate card automatically.
+
+4. **Safety & Guardrails**:
+   - Never agree to perpetual or unlimited usage rights without explicit Host confirmation.
+   - Ensure all payments are structured in INR (₹) with milestone disbursements (50% on signing, 50% on published link).`,
+			manifest: {
+				description:
+					"Autonomously researches inbound sponsor brands, evaluates deliverable budgets in INR against creator rate cards, updates Collab Deal stages, and requests Host approval for high-value deals.",
+				actions: [
+					{
+						type: "crm.activity.create",
+						provider: "crm",
+						summary:
+							"Log triage assessment notes and deliverables evaluation on collab deals",
+						activityTypes: ["NOTE", "TASK"],
+					},
+					{
+						type: "run.summary",
+						provider: "crm",
+						summary:
+							"Publish run summary to workspace timeline and creator dashboard",
+					},
+				],
+				triggers: [
+					{
+						type: "EVENT",
+						name: "Collab Deal Created",
+						summary:
+							"Triggered when a brand sponsorship collab deal is created in the pipeline",
+						config: {
+							event: "deal.created",
+						},
+					},
+				],
+				dataScope: {
+					mode: "WORKSPACE",
+					summary:
+						"Access to brand sponsors, collab deals, and creator rate card records",
+					resources: [],
+				},
+			},
 			modelId: "gemini-2.5-pro",
+			modelContextWindowTokens: 1000000,
 			sandboxPolicy: {},
 			createdById: ownerId,
+			approvedAt: daysFromNow(-19),
+			deployedAt: daysFromNow(-19),
 		},
 		update: {},
 	});
@@ -1117,21 +1188,42 @@ async function seedPreConfiguredAgents(ownerId: string): Promise<void> {
 		data: { currentVersionId: version1.id },
 	});
 
-	// 2. Slave 2: IG & WhatsApp Community DM Agent (REIC)
+	const trigger1 = await db.agentTrigger.upsert({
+		where: { id: "trigger-slave-1-deal-created" },
+		create: {
+			id: "trigger-slave-1-deal-created",
+			agentId: "agent-slave-1",
+			versionId: version1.id,
+			type: AgentTriggerType.EVENT,
+			name: "Collab Deal Created",
+			config: { event: "deal.created" },
+			enabled: true,
+			createdById: ownerId,
+		},
+		update: {
+			versionId: version1.id,
+			type: AgentTriggerType.EVENT,
+			name: "Collab Deal Created",
+			config: { event: "deal.created" },
+			enabled: true,
+		},
+	});
+
+	// 2. Slave 2: Omnichannel Community & Comment-to-DM Agent
 	const _agent2 = await db.agentDefinition.upsert({
 		where: { id: "agent-slave-2" },
 		create: {
 			id: "agent-slave-2",
-			name: "Slave 2: IG & WhatsApp Community DM Agent (REIC)",
+			name: "Slave 2: IG & WhatsApp Community DM",
 			description:
-				"Handles Comment-to-DM automation, fan interaction, and affiliate link dispatch across Instagram and WhatsApp.",
+				"Monitors Instagram Reel comments, WhatsApp DMs, and Telegram messages using REIC intent classification. Dispatches automated affiliate/resource links via Meta's 24h CSW comment_id rule.",
 			status: "LIVE",
 			createdById: ownerId,
 		},
 		update: {
-			name: "Slave 2: IG & WhatsApp Community DM Agent (REIC)",
+			name: "Slave 2: IG & WhatsApp Community DM",
 			description:
-				"Handles Comment-to-DM automation, fan interaction, and affiliate link dispatch across Instagram and WhatsApp.",
+				"Monitors Instagram Reel comments, WhatsApp DMs, and Telegram messages using REIC intent classification. Dispatches automated affiliate/resource links via Meta's 24h CSW comment_id rule.",
 			status: "LIVE",
 		},
 	});
@@ -1143,14 +1235,76 @@ async function seedPreConfiguredAgents(ownerId: string): Promise<void> {
 			agentId: "agent-slave-2",
 			number: 1,
 			status: "DEPLOYED",
-			instructions:
-				"Listen for reel comments with keywords (e.g. 'TEMPLATE', 'LINK', 'DEAL'), trigger direct messages with trackable UTM affiliate links via Meta Graph API.",
+			instructions: `# Slave 2: IG & WhatsApp Community DM Agent (REIC)
+
+You are the Omnichannel Community & Comment-to-DM Agent specializing in audience engagement, keyword auto-fulfillment, and creator affiliate link delivery.
+You operate across Instagram Reels comments, WhatsApp Community DMs, and Telegram broadcast replies.
+
+## REIC Framework (Recognize, Evaluate, Intent, Convert)
+
+1. **Recognize**:
+   - Detect inbound interactions from Instagram comment webhooks, WhatsApp incoming chats, or contact creation.
+   - Extract keywords such as \`TEMPLATE\`, \`CODE\`, \`LINK\`, \`RATE\`, \`GEAR\`, \`DISCOUNT\`, or \`COURSE\`.
+
+2. **Evaluate & Policy Compliance**:
+   - **Meta 24h Customer Service Window (CSW) & \`comment_id\` rule**:
+     - Responses to Instagram reel comments MUST be dispatched using Meta Graph API \`/v19.0/{comment_id}/messages\` within 24 hours of the comment timestamp.
+     - Never spam or cold DM users who did not trigger a keyword.
+     - Single direct message per trigger with instant delivery confirmation.
+
+3. **Intent Classification**:
+   - Categorize intent:
+     - \`RESOURCE_DOWNLOAD\`: User requested template, cheatsheet, or code snippet.
+     - \`AFFILIATE_PURCHASE\`: User asked for gear link, hardware discount code (e.g., boAt ANC, ASUS ROG).
+     - \`COLLAB_INQUIRY\`: Brand representative or fellow creator asking to connect.
+     - \`FAN_APPRECIATION\`: Casual encouragement or feedback.
+
+4. **Execution & Fulfillment**:
+   - Call \`create_crm_activity\` to record the omnichannel interaction under the contact timeline.
+   - Format outbound DM response with verified, trackable UTM campaign parameters:
+     - Example: \`https://creatorshop.in/templates/system-design?utm_source=instagram&utm_medium=reels_dm&utm_campaign=auto_reply\`
+   - If \`COLLAB_INQUIRY\` is detected, notify Host and trigger Slave 1 Collab Triage flow.`,
 			manifest: {
-				tools: ["send_dm", "log_interaction", "generate_affiliate_link"],
+				description:
+					"Monitors social comments and messages, classifies user intent via REIC, and dispatches compliant automated DMs with affiliate links.",
+				actions: [
+					{
+						type: "crm.activity.create",
+						provider: "crm",
+						summary:
+							"Record omnichannel DM interactions and link clicks on contact profiles",
+						activityTypes: ["NOTE", "TASK"],
+					},
+					{
+						type: "run.summary",
+						provider: "crm",
+						summary: "Log social fulfillment metrics and conversion summaries",
+					},
+				],
+				triggers: [
+					{
+						type: "EVENT",
+						name: "Community Contact Created",
+						summary:
+							"Triggered when a new social contact or subscriber profile is created",
+						config: {
+							event: "contact.created",
+						},
+					},
+				],
+				dataScope: {
+					mode: "WORKSPACE",
+					summary:
+						"Access to community contacts, social handles, and affiliate link catalogs",
+					resources: [],
+				},
 			},
 			modelId: "gemini-2.5-flash",
+			modelContextWindowTokens: 1000000,
 			sandboxPolicy: {},
 			createdById: ownerId,
+			approvedAt: daysFromNow(-19),
+			deployedAt: daysFromNow(-19),
 		},
 		update: {},
 	});
@@ -1158,6 +1312,279 @@ async function seedPreConfiguredAgents(ownerId: string): Promise<void> {
 	await db.agentDefinition.update({
 		where: { id: "agent-slave-2" },
 		data: { currentVersionId: version2.id },
+	});
+
+	const trigger2 = await db.agentTrigger.upsert({
+		where: { id: "trigger-slave-2-contact-created" },
+		create: {
+			id: "trigger-slave-2-contact-created",
+			agentId: "agent-slave-2",
+			versionId: version2.id,
+			type: AgentTriggerType.EVENT,
+			name: "Community Contact Created",
+			config: { event: "contact.created" },
+			enabled: true,
+			createdById: ownerId,
+		},
+		update: {
+			versionId: version2.id,
+			type: AgentTriggerType.EVENT,
+			name: "Community Contact Created",
+			config: { event: "contact.created" },
+			enabled: true,
+		},
+	});
+
+	// Seed 2 Completed Agent Runs for Rich History
+	// Run 1: Slave 1 on boAt Nirvana ANC Collab Deal
+	const boatDealId = "seed-deal-boat-nirvana-q4";
+	const run1Time = daysFromNow(-5);
+	await db.agentRun.upsert({
+		where: { id: "seed-run-slave-1-boat" },
+		create: {
+			id: "seed-run-slave-1-boat",
+			agentId: "agent-slave-1",
+			versionId: version1.id,
+			triggerId: trigger1.id,
+			initiatedById: ownerId,
+			triggerType: AgentTriggerType.EVENT,
+			status: AgentRunStatus.SUCCEEDED,
+			sessionId: "session-slave-1-boat",
+			idempotencyKey: "idemp-run-slave-1-boat",
+			correlationId: "corr-run-slave-1-boat",
+			summary:
+				"Evaluated boAt Nirvana ANC Q4 Launch Collab (₹4,50,000). Verified deliverables scope (1x YT Dedicated + 2x IG Reels), validated INR budget against rate card, transitioned stage to Rate Negotiation, and queued Host approval request.",
+			modelId: "gemini-2.5-pro",
+			inputTokens: 1420,
+			outputTokens: 385,
+			costUsd: 0.00285,
+			nextEventSequence: 5,
+			createdAt: run1Time,
+			startedAt: run1Time,
+			finishedAt: new Date(run1Time.getTime() + 4200),
+		},
+		update: {
+			versionId: version1.id,
+			triggerId: trigger1.id,
+			status: AgentRunStatus.SUCCEEDED,
+			summary:
+				"Evaluated boAt Nirvana ANC Q4 Launch Collab (₹4,50,000). Verified deliverables scope (1x YT Dedicated + 2x IG Reels), validated INR budget against rate card, transitioned stage to Rate Negotiation, and queued Host approval request.",
+			finishedAt: new Date(run1Time.getTime() + 4200),
+		},
+	});
+
+	await db.agentRunEvent.deleteMany({
+		where: { runId: "seed-run-slave-1-boat" },
+	});
+	await db.agentRunEvent.createMany({
+		data: [
+			{
+				id: "seed-event-s1-0",
+				runId: "seed-run-slave-1-boat",
+				sequence: 0,
+				type: "trigger.received",
+				data: {
+					summary:
+						"Received deal.created event for boAt Nirvana ANC Q4 Launch Collab (₹4,50,000)",
+					dealId: boatDealId,
+				},
+				emittedAt: run1Time,
+			},
+			{
+				id: "seed-event-s1-1",
+				runId: "seed-run-slave-1-boat",
+				sequence: 1,
+				type: "tool.call",
+				data: {
+					summary:
+						"Inspected brand profile boAt Lifestyle (boat-lifestyle.com) and contact Riya Sharma via read_crm_record",
+					tool: "read_crm_record",
+				},
+				emittedAt: new Date(run1Time.getTime() + 1100),
+			},
+			{
+				id: "seed-event-s1-2",
+				runId: "seed-run-slave-1-boat",
+				sequence: 2,
+				type: "triage.evaluation",
+				data: {
+					summary:
+						"Budget ₹4,50,000 matches creator rate card threshold for 1x YT Dedicated + 2x IG Reels with 30-day audio exclusivity",
+					evaluation: "APPROVED_FOR_NEGOTIATION",
+				},
+				emittedAt: new Date(run1Time.getTime() + 2400),
+			},
+			{
+				id: "seed-event-s1-3",
+				runId: "seed-run-slave-1-boat",
+				sequence: 3,
+				type: "stage.updated",
+				data: {
+					summary:
+						"Updated deal stage to Rate Negotiation (DECISION_MAKER_BOUGHT_IN)",
+					stage: "DECISION_MAKER_BOUGHT_IN",
+				},
+				emittedAt: new Date(run1Time.getTime() + 3100),
+			},
+			{
+				id: "seed-event-s1-4",
+				runId: "seed-run-slave-1-boat",
+				sequence: 4,
+				type: "action.completed",
+				data: {
+					summary:
+						"Created sponsorship evaluation note and requested Host approval for deal >= ₹2,00,000",
+					dealId: boatDealId,
+				},
+				emittedAt: new Date(run1Time.getTime() + 4200),
+			},
+		],
+	});
+
+	await db.agentAction.upsert({
+		where: { id: "seed-action-slave-1-boat" },
+		create: {
+			id: "seed-action-slave-1-boat",
+			agentId: "agent-slave-1",
+			runId: "seed-run-slave-1-boat",
+			type: "crm.activity.create",
+			provider: "crm",
+			targetType: "deal",
+			targetId: boatDealId,
+			targetLabel: "boAt Nirvana ANC Q4 Launch Collab",
+			summary:
+				"Logged rate card triage note and queued Host approval for boAt sponsorship (₹4,50,000)",
+			status: AgentActionStatus.SUCCEEDED,
+			idempotencyKey: "idemp-act-slave-1-boat",
+			plannedAt: new Date(run1Time.getTime() + 3200),
+			startedAt: new Date(run1Time.getTime() + 3300),
+			completedAt: new Date(run1Time.getTime() + 4100),
+		},
+		update: {
+			status: AgentActionStatus.SUCCEEDED,
+			summary:
+				"Logged rate card triage note and queued Host approval for boAt sponsorship (₹4,50,000)",
+			completedAt: new Date(run1Time.getTime() + 4100),
+		},
+	});
+
+	// Run 2: Slave 2 on Instagram Reel Comment
+	const run2Time = daysFromNow(-2);
+	await db.agentRun.upsert({
+		where: { id: "seed-run-slave-2-ig-dm" },
+		create: {
+			id: "seed-run-slave-2-ig-dm",
+			agentId: "agent-slave-2",
+			versionId: version2.id,
+			triggerId: trigger2.id,
+			initiatedById: ownerId,
+			triggerType: AgentTriggerType.EVENT,
+			status: AgentRunStatus.SUCCEEDED,
+			sessionId: "session-slave-2-ig-dm",
+			idempotencyKey: "idemp-run-slave-2-ig-dm",
+			correlationId: "corr-run-slave-2-ig-dm",
+			summary:
+				"Processed Instagram Reel comment from @aarav_creator_fan containing keyword 'GEAR'. Classified intent as AFFILIATE_PURCHASE via REIC and dispatched boAt & ASUS creator kit link via Meta Graph API /v19.0/{comment_id}/messages within CSW window.",
+			modelId: "gemini-2.5-flash",
+			inputTokens: 820,
+			outputTokens: 215,
+			costUsd: 0.00062,
+			nextEventSequence: 4,
+			createdAt: run2Time,
+			startedAt: run2Time,
+			finishedAt: new Date(run2Time.getTime() + 1850),
+		},
+		update: {
+			versionId: version2.id,
+			triggerId: trigger2.id,
+			status: AgentRunStatus.SUCCEEDED,
+			summary:
+				"Processed Instagram Reel comment from @aarav_creator_fan containing keyword 'GEAR'. Classified intent as AFFILIATE_PURCHASE via REIC and dispatched boAt & ASUS creator kit link via Meta Graph API /v19.0/{comment_id}/messages within CSW window.",
+			finishedAt: new Date(run2Time.getTime() + 1850),
+		},
+	});
+
+	await db.agentRunEvent.deleteMany({
+		where: { runId: "seed-run-slave-2-ig-dm" },
+	});
+	await db.agentRunEvent.createMany({
+		data: [
+			{
+				id: "seed-event-s2-0",
+				runId: "seed-run-slave-2-ig-dm",
+				sequence: 0,
+				type: "trigger.received",
+				data: {
+					summary:
+						"Detected Instagram Reel comment from Aarav Kapoor (@aarav_creator_fan): 'Bro what headphones are those? Share link!'",
+					source: "instagram_reels",
+				},
+				emittedAt: run2Time,
+			},
+			{
+				id: "seed-event-s2-1",
+				runId: "seed-run-slave-2-ig-dm",
+				sequence: 1,
+				type: "reic.classification",
+				data: {
+					summary:
+						"REIC Classification: Intent = AFFILIATE_PURCHASE | Keyword = 'LINK'/'GEAR' | Confidence = 0.98",
+					intent: "AFFILIATE_PURCHASE",
+				},
+				emittedAt: new Date(run2Time.getTime() + 650),
+			},
+			{
+				id: "seed-event-s2-2",
+				runId: "seed-run-slave-2-ig-dm",
+				sequence: 2,
+				type: "meta.csw.validation",
+				data: {
+					summary:
+						"Verified Meta 24-hour Customer Service Window (comment age: 4m). Formatted compliant direct message with boAt Nirvana ANC affiliate link",
+					compliant: true,
+				},
+				emittedAt: new Date(run2Time.getTime() + 1200),
+			},
+			{
+				id: "seed-event-s2-3",
+				runId: "seed-run-slave-2-ig-dm",
+				sequence: 3,
+				type: "action.completed",
+				data: {
+					summary:
+						"Dispatched automated Instagram DM to @aarav_creator_fan and recorded engagement note in CRM contact timeline",
+					status: "DELIVERED",
+				},
+				emittedAt: new Date(run2Time.getTime() + 1850),
+			},
+		],
+	});
+
+	await db.agentAction.upsert({
+		where: { id: "seed-action-slave-2-dm" },
+		create: {
+			id: "seed-action-slave-2-dm",
+			agentId: "agent-slave-2",
+			runId: "seed-run-slave-2-ig-dm",
+			type: "crm.activity.create",
+			provider: "crm",
+			targetType: "contact",
+			targetId: "aarav.kapoor@gmail.com",
+			targetLabel: "Aarav Kapoor (@aarav_creator_fan)",
+			summary:
+				"Logged Instagram Comment-to-DM auto-reply: boAt Nirvana ANC affiliate link sent",
+			status: AgentActionStatus.SUCCEEDED,
+			idempotencyKey: "idemp-act-slave-2-dm",
+			plannedAt: new Date(run2Time.getTime() + 1300),
+			startedAt: new Date(run2Time.getTime() + 1400),
+			completedAt: new Date(run2Time.getTime() + 1800),
+		},
+		update: {
+			status: AgentActionStatus.SUCCEEDED,
+			summary:
+				"Logged Instagram Comment-to-DM auto-reply: boAt Nirvana ANC affiliate link sent",
+			completedAt: new Date(run2Time.getTime() + 1800),
+		},
 	});
 
 	console.log("Seeded 2 pre-configured Creator AI Custom Agents.");

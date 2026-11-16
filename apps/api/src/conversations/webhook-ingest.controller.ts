@@ -5,6 +5,8 @@ import {
 	Prisma,
 	RecordSource,
 } from "@crm/db";
+import { convertToBase } from "@crm/db/fx";
+import { readReportingCurrency } from "@crm/db/settings";
 import {
 	Body,
 	Controller,
@@ -236,6 +238,14 @@ export class WebhookIngestController {
 		});
 
 		if (!deal) {
+			const reportingCurrency = await readReportingCurrency(this.db);
+			const fx = await convertToBase(
+				this.db,
+				new Prisma.Decimal(budgetAmount),
+				"INR",
+				reportingCurrency,
+			);
+
 			deal = await this.db.deal.create({
 				data: {
 					name: dealName,
@@ -244,6 +254,10 @@ export class WebhookIngestController {
 					stage: DealStage.DEMO_BOOKED,
 					amount: new Prisma.Decimal(budgetAmount),
 					currency: "INR",
+					baseAmount: fx?.baseAmount ?? null,
+					baseCurrency: fx?.baseCurrency ?? null,
+					fxRate: fx?.fxRate ?? null,
+					fxRateAt: fx?.fxRateAt ?? null,
 					description: `Inbound brand inquiry via ${platform}:\n\n"${payload.text}"`,
 					expectedCloseDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
 					lastActivityAt: new Date(),

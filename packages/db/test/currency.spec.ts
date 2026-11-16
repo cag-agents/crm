@@ -62,9 +62,10 @@ describe("normalizeCurrency and isCurrencyCode", () => {
 		}
 	});
 
-	it("offers only the eleven currencies most of the world trades in", () => {
+	it("offers the supported currencies including INR", () => {
 		expect(CURRENCIES.map((entry) => entry.code)).toEqual([
 			"USD",
+			"INR",
 			"EUR",
 			"JPY",
 			"GBP",
@@ -94,6 +95,7 @@ describe("normalizeCurrency and isCurrencyCode", () => {
 
 	it("names the currencies it knows", () => {
 		expect(currencyName("jpy")).toBe("Japanese Yen");
+		expect(currencyName("inr")).toBe("Indian Rupee");
 		expect(currencyName("ZZZ")).toBeNull();
 	});
 });

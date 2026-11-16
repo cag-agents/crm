@@ -68,15 +68,15 @@ export const env = {
 } as const;
 
 export function isGoogleConfigured(): boolean {
-	return env.google !== undefined;
+	return env.google !== undefined || googleCredentials() !== undefined;
 }
 
 export function isMicrosoftConfigured(): boolean {
-	return env.microsoft !== undefined;
+	return env.microsoft !== undefined || microsoftCredentials() !== undefined;
 }
 
 export function isSlackConfigured(): boolean {
-	return env.slack !== undefined;
+	return env.slack !== undefined || slackCredentials() !== undefined;
 }
 
 export { apiUrl, appUrl };

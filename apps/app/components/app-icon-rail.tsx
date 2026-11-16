@@ -1,6 +1,8 @@
 "use client";
 
+import Analytics from "@carbon/icons-react/es/Analytics";
 import Building from "@carbon/icons-react/es/Building";
+import Chat from "@carbon/icons-react/es/Chat";
 import Close from "@carbon/icons-react/es/Close";
 import Dashboard from "@carbon/icons-react/es/Dashboard";
 import Partnership from "@carbon/icons-react/es/Partnership";
@@ -40,7 +42,9 @@ type RailItem = {
 };
 
 const ITEMS: RailItem[] = [
-	{ title: "Overview", href: "/", icon: Dashboard, match: "exact" },
+	{ title: "Command Center", href: "/", icon: Dashboard, match: "exact" },
+	{ title: "Inbox", href: "/inbox", icon: Chat, match: "prefix" },
+	{ title: "Analytics", href: "/analytics", icon: Analytics, match: "prefix" },
 	{
 		title: "Chat",
 		href: "/chat",
@@ -49,14 +53,24 @@ const ITEMS: RailItem[] = [
 		match: "prefix",
 		related: ["/agents"],
 	},
-	{ title: "Companies", href: "/companies", icon: Building, match: "prefix" },
 	{
-		title: "Contacts",
+		title: "Brands & Sponsors",
+		href: "/companies",
+		icon: Building,
+		match: "prefix",
+	},
+	{
+		title: "Talent & Network",
 		href: "/contacts",
 		icon: UserMultiple,
 		match: "prefix",
 	},
-	{ title: "Deals", href: "/deals", icon: Partnership, match: "prefix" },
+	{
+		title: "Brand Collabs",
+		href: "/deals",
+		icon: Partnership,
+		match: "prefix",
+	},
 	{ title: "Settings", href: "/settings", icon: Settings, match: "prefix" },
 ];
 

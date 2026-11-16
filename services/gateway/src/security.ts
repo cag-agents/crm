@@ -18,34 +18,39 @@ import { createHmac } from "node:crypto";
  * @see https://developers.facebook.com/docs/graph-api/webhooks/getting-started#verification-requests
  */
 export function verifyMetaSignature(
-  rawBody: string,
-  signature: string | undefined
+	rawBody: string,
+	signature: string | undefined,
+	isSimulation = false,
 ): boolean {
-  const APP_SECRET = process.env.META_APP_SECRET;
+	if (isSimulation) {
+		return true;
+	}
 
-  if (!APP_SECRET) {
-    console.warn("[security] META_APP_SECRET not set — skipping signature verification");
-    // In development, allow unsigned webhooks. In production, this should fail.
-    return process.env.NODE_ENV !== "production";
-  }
+	const APP_SECRET = process.env.META_APP_SECRET;
 
-  if (!signature) {
-    return false;
-  }
+	if (!APP_SECRET) {
+		console.warn(
+			"[security] META_APP_SECRET not set — skipping signature verification",
+		);
+		// In development, allow unsigned webhooks. In production, this should fail.
+		return process.env.NODE_ENV !== "production";
+	}
 
-  const expectedSignature =
-    "sha256=" +
-    createHmac("sha256", APP_SECRET).update(rawBody).digest("hex");
+	if (!signature) {
+		return false;
+	}
 
-  // Constant-time comparison to prevent timing attacks
-  if (signature.length !== expectedSignature.length) {
-    return false;
-  }
+	const expectedSignature = `sha256=${createHmac("sha256", APP_SECRET).update(rawBody).digest("hex")}`;
 
-  const a = Buffer.from(signature);
-  const b = Buffer.from(expectedSignature);
+	// Constant-time comparison to prevent timing attacks
+	if (signature.length !== expectedSignature.length) {
+		return false;
+	}
 
-  return crypto.subtle ? a.equals(b) : signature === expectedSignature;
+	const a = Buffer.from(signature);
+	const b = Buffer.from(expectedSignature);
+
+	return crypto.subtle ? a.equals(b) : signature === expectedSignature;
 }
 
 /**
@@ -56,15 +61,24 @@ export function verifyMetaSignature(
  *
  * @see https://core.telegram.org/bots/api#setwebhook
  */
-export function verifyTelegramSecret(secretToken: string | undefined): boolean {
-  const EXPECTED = process.env.TELEGRAM_WEBHOOK_SECRET;
+export function verifyTelegramSecret(
+	secretToken: string | undefined,
+	isSimulation = false,
+): boolean {
+	if (isSimulation) {
+		return true;
+	}
 
-  if (!EXPECTED) {
-    console.warn("[security] TELEGRAM_WEBHOOK_SECRET not set — skipping verification");
-    return process.env.NODE_ENV !== "production";
-  }
+	const EXPECTED = process.env.TELEGRAM_WEBHOOK_SECRET;
 
-  return secretToken === EXPECTED;
+	if (!EXPECTED) {
+		console.warn(
+			"[security] TELEGRAM_WEBHOOK_SECRET not set — skipping verification",
+		);
+		return process.env.NODE_ENV !== "production";
+	}
+
+	return secretToken === EXPECTED;
 }
 
 /**
@@ -74,9 +88,9 @@ export function verifyTelegramSecret(secretToken: string | undefined): boolean {
 const TELEGRAM_SUBNETS = ["149.154.160.0/20", "91.108.4.0/22"];
 
 export function verifyTelegramIP(ip: string): boolean {
-  // Simplified check — in production, use a proper CIDR library
-  return TELEGRAM_SUBNETS.some((subnet) => {
-    const [base] = subnet.split("/");
-    return ip.startsWith(base?.split(".").slice(0, 2).join(".") ?? "");
-  });
+	// Simplified check — in production, use a proper CIDR library
+	return TELEGRAM_SUBNETS.some((subnet) => {
+		const [base] = subnet.split("/");
+		return ip.startsWith(base?.split(".").slice(0, 2).join(".") ?? "");
+	});
 }

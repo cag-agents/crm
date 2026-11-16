@@ -11,11 +11,11 @@
   <img alt="stars" height="21" src="https://afterglow.watch/badge/trycompai/crm">
 </p>
 
-<h1 align="center">CRM</h1>
+<h1 align="center">CAG AI CRM</h1>
 
 <p align="center">
-  <strong>Comp AI CRM is an open source, CRM designed for AI agents.</strong><br>
-  Agentic-first CRM.
+  <strong>CAG AI CRM is an autonomous omnichannel CRM platform designed for AI agents.</strong><br>
+  Unified WhatsApp Cloud, Meta Social (Instagram & Facebook), and Email communication hub with n8n orchestration.
 </p>
 
 <p align="center">

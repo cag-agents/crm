@@ -17,13 +17,13 @@ type DealStagePresentation = Record<
 >;
 
 const PRESENTATION: DealStagePresentation = {
-	DEMO_BOOKED: { label: "Demo booked", tone: "neutral" },
-	QUALIFIED_TO_BUY: { label: "Qualified to buy", tone: "info" },
-	DECISION_MAKER_BOUGHT_IN: { label: "Decision maker in", tone: "info" },
-	CONTRACT_SENT: { label: "Contract sent", tone: "warning" },
-	CLOSED_WON: { label: "Closed won", tone: "success" },
-	CLOSED_LOST: { label: "Closed lost", tone: "error" },
-	UNQUALIFIED_TO_BUY: { label: "Unqualified", tone: "neutral" },
+	DEMO_BOOKED: { label: "Inbound Inquiry", tone: "neutral" },
+	QUALIFIED_TO_BUY: { label: "Media Kit Sent", tone: "info" },
+	DECISION_MAKER_BOUGHT_IN: { label: "Rate Negotiation", tone: "info" },
+	CONTRACT_SENT: { label: "Content in Production", tone: "warning" },
+	CLOSED_WON: { label: "Published & Paid", tone: "success" },
+	CLOSED_LOST: { label: "Declined / Passed", tone: "error" },
+	UNQUALIFIED_TO_BUY: { label: "Declined / Passed", tone: "neutral" },
 };
 
 export const OPEN_STAGES = ORDER.slice(0, 4) as readonly DealStage[];

@@ -270,6 +270,10 @@ export type BriefSections = {
 	seniority?: string;
 	function?: string;
 	location?: string;
+	brandOverview?: string;
+	deliverables?: string;
+	commercialsInr?: string;
+	recommendedAction?: string;
 };
 
 export async function writeBrief(input: {

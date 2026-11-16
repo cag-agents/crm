@@ -18,7 +18,7 @@ import { CompaniesTable } from "./companies-table";
 import { CreateCompanySheet } from "./create-company-sheet";
 
 export const metadata: Metadata = {
-	title: "Companies",
+	title: "Brands & Sponsors",
 };
 
 export default function CompaniesPage({
@@ -28,9 +28,9 @@ export default function CompaniesPage({
 		<PageShell className="min-h-0">
 			<PageShellHeader>
 				<PageShellHeading>
-					<PageShellTitle>Companies</PageShellTitle>
+					<PageShellTitle>Brands & Sponsors</PageShellTitle>
 					<PageShellDescription>
-						Every account in the pipeline.
+						Every brand partner and sponsor in your creator pipeline.
 					</PageShellDescription>
 				</PageShellHeading>
 				<PageShellActions>

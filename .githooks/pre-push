@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+export PATH="$HOME/.bun/bin:$PATH"
+
 set -eu
 
 [ -n "${CRM_SKIP_HOOKS:-}" ] && exit 0

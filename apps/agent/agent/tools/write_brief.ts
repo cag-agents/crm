@@ -25,7 +25,7 @@ export default defineTool({
 			currentRole: z
 				.string()
 				.optional()
-				.describe('e.g. "CEO & Co-founder · Comp AI"'),
+				.describe('e.g. "CEO & Co-founder · CAG AI CRM"'),
 			tenure: z.string().optional().describe('e.g. "2 yrs 3 mos"'),
 			previousRoles: z.array(z.string()).optional(),
 			seniority: z.string().optional().describe('e.g. "Founder / C-level"'),
@@ -34,6 +34,16 @@ export default defineTool({
 				.optional()
 				.describe('e.g. "Executive", "Security", "Finance"'),
 			location: z.string().optional(),
+			brandOverview: z
+				.string()
+				.optional()
+				.describe("Summary of the sponsoring brand"),
+			deliverables: z.string().optional().describe("Requested deliverables"),
+			commercialsInr: z.string().optional().describe("Commercial terms in INR"),
+			recommendedAction: z
+				.string()
+				.optional()
+				.describe("Recommended next action"),
 		}),
 		evidence: z
 			.array(

@@ -172,7 +172,7 @@ const DEMO_CONVERSATIONS: ConversationItem[] = [
 	},
 ];
 
-const DEMO_MESSAGES: Record<string, ChatMessage[]> = {
+const DEMO_MESSAGES = {
 	"conv-wa-01": [
 		{
 			id: "msg-wa-1",
@@ -238,7 +238,7 @@ const DEMO_MESSAGES: Record<string, ChatMessage[]> = {
 			sentAt: new Date(Date.now() - 55 * 60 * 1000).toISOString(),
 		},
 	],
-};
+} satisfies Record<string, ChatMessage[]>;
 
 const CANNED_REPLIES = [
 	"Thanks for reaching out! Let me check the details and get back to you shortly.",

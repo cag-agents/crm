@@ -106,7 +106,7 @@ const ROLES: RoleDefinition[] = [
 	},
 ];
 
-const DEFAULT_MATRIX: Record<RoleKey, Record<string, boolean>> = {
+const DEFAULT_MATRIX = {
 	admin: {
 		view_conversations: true,
 		send_messages: true,
@@ -135,7 +135,7 @@ const DEFAULT_MATRIX: Record<RoleKey, Record<string, boolean>> = {
 		channel_settings: false,
 		access_analytics: true,
 	},
-};
+} satisfies Record<RoleKey, Record<string, boolean>>;
 
 const DEFAULT_MODULES: ModuleToggle[] = [
 	{

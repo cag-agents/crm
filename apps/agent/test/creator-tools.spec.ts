@@ -3,11 +3,11 @@ import {
 	HIGH_STAKES_SPONSORSHIP_THRESHOLDS,
 	isHighStakesSponsorship,
 } from "../agent/lib/approval";
-import { executeDispatchSocialDm } from "../agent/tools/dispatch_social_dm";
+import { executeDispatchSocialDm } from "../agent/subagents/agent_runner/tools/dispatch_social_dm";
 import {
 	calculateCreatorBenchmarkRate,
 	executeEvaluateSponsorshipOffer,
-} from "../agent/tools/evaluate_sponsorship_offer";
+} from "../agent/subagents/agent_runner/tools/evaluate_sponsorship_offer";
 
 describe("dispatch_social_dm tool", () => {
 	it("constructs compliant /v19.0/{comment_id}/messages endpoint for Instagram keyword_link_request", async () => {

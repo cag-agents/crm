@@ -25,8 +25,7 @@ export default defineTool({
 			await db.agentConversation.updateMany({
 				where: { sessionId: ctx.session.id },
 				data: {
-					pendingInputRequest:
-						requestPayload as unknown as Prisma.InputJsonValue,
+					pendingInputRequest: requestPayload as Prisma.InputJsonValue,
 				},
 			});
 		}

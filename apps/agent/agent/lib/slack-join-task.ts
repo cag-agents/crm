@@ -14,9 +14,9 @@ export async function runSlackChannelJoin(
 
 	if (outcome.joined) {
 		return outcome.already
-			? `Comp AI was already in #${channelName}.`
-			: `Comp AI joined #${channelName}.`;
+			? `CAG AI CRM was already in #${channelName}.`
+			: `CAG AI CRM joined #${channelName}.`;
 	}
 
-	return `Comp AI could not join #${channelName}. ${outcome.reason}`;
+	return `CAG AI CRM could not join #${channelName}. ${outcome.reason}`;
 }

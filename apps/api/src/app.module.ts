@@ -26,6 +26,7 @@ import { LoggingModule } from "./logging/logging.module";
 import { logAuthRoute } from "./logging/request-logger.middleware";
 import { MailboxModule } from "./mailbox/mailbox.module";
 import { MicrosoftModule } from "./microsoft/microsoft.module";
+import { OmnichannelModule } from "./omnichannel/omnichannel.module";
 import { SavedViewsModule } from "./saved-views/saved-views.module";
 import { SearchModule } from "./search/search.module";
 import { SettingsModule } from "./settings/settings.module";
@@ -58,6 +59,7 @@ import { WorkspaceModule } from "./workspace/workspace.module";
 		CompaniesModule,
 		ContactsModule,
 		ConversationsModule,
+		OmnichannelModule,
 		CurrencyModule,
 		DealsModule,
 		FieldsModule,

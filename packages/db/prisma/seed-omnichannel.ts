@@ -8,7 +8,7 @@ export async function seedOmnichannel() {
 		where: { id: "workspace" },
 		create: {
 			id: "workspace",
-			name: "CRM",
+			name: "CAG CRM",
 			slug: "crm",
 			createdAt: new Date(),
 		},

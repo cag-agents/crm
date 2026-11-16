@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { type Prisma, db } from "@crm/db";
 import { processFacebookMessage } from "./facebook";
 import { processInstagramMessage } from "./instagram";
+import { processFacebookFeedComment, processInstagramComment, replyToComment } from "./content";
 import { sendMetaMessage } from "./sender";
 import type { MetaWebhookPayload } from "./types";
 
@@ -32,7 +33,7 @@ app.get("/webhook/meta", (c) => {
 
 /**
  * Meta Webhook Receiver endpoint
- * Receives webhook notifications from Facebook Pages & Instagram
+ * Receives webhook notifications from Facebook Pages & Instagram (both DMs and post comments)
  */
 app.post("/webhook/meta", async (c) => {
   try {
@@ -43,7 +44,7 @@ app.post("/webhook/meta", async (c) => {
       data: {
         channelType: payload.object === "instagram" ? "INSTAGRAM" : "FACEBOOK",
         payload: payload as unknown as Prisma.InputJsonValue,
-        eventType: "messaging",
+        eventType: "messaging_or_content",
         status: "RECEIVED",
       },
     }).catch((err) => console.error("[meta-social] Failed to audit webhook event:", err));
@@ -53,15 +54,31 @@ app.post("/webhook/meta", async (c) => {
       for (const entry of payload.entry) {
         const targetId = entry.id;
 
+        // Process Direct Messaging events
         if (entry.messaging && Array.isArray(entry.messaging)) {
           for (const msgEvent of entry.messaging) {
             if (payload.object === "instagram") {
               processInstagramMessage(targetId, msgEvent).catch((err) =>
-                console.error("[meta-social] Instagram processing error:", err)
+                console.error("[meta-social] Instagram DM processing error:", err)
               );
             } else {
               processFacebookMessage(targetId, msgEvent).catch((err) =>
-                console.error("[meta-social] Facebook processing error:", err)
+                console.error("[meta-social] Facebook DM processing error:", err)
+              );
+            }
+          }
+        }
+
+        // Process Feed Comments & Social Interactions
+        if (entry.changes && Array.isArray(entry.changes)) {
+          for (const change of entry.changes) {
+            if (payload.object === "instagram") {
+              processInstagramComment(targetId, change).catch((err) =>
+                console.error("[meta-social] Instagram Comment processing error:", err)
+              );
+            } else {
+              processFacebookFeedComment(targetId, change).catch((err) =>
+                console.error("[meta-social] Facebook Feed processing error:", err)
               );
             }
           }
@@ -100,6 +117,36 @@ app.post("/api/send", async (c) => {
     }
 
     return c.json({ success: true, messageId: result.messageId });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
+ * Outbound Comment Reply API endpoint
+ * Allows CRM agents or automations to reply directly to Facebook & Instagram comments
+ */
+app.post("/api/comment/reply", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { commentId, message, token } = body;
+
+    if (!commentId || !message) {
+      return c.json({ error: "commentId and message are required" }, 400);
+    }
+
+    const result = await replyToComment({
+      commentId,
+      message,
+      token,
+    });
+
+    if (!result.success) {
+      return c.json({ error: result.error }, 500);
+    }
+
+    return c.json({ success: true, id: result.id });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);

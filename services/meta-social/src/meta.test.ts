@@ -69,4 +69,45 @@ describe("Meta Social Service Webhook Tests", () => {
     const text = await res.text();
     expect(text).toBe("EVENT_RECEIVED");
   });
+
+  it("POST /webhook/meta processes social comments change event", async () => {
+    const commentPayload = {
+      object: "page",
+      entry: [
+        {
+          id: "page_123456",
+          time: Date.now(),
+          changes: [
+            {
+              field: "feed",
+              value: {
+                item: "comment",
+                verb: "add",
+                comment_id: "comment_999",
+                post_id: "post_888",
+                message: "Love this product, where can I buy?",
+                created_time: Math.floor(Date.now() / 1000),
+                from: {
+                  id: "customer_555",
+                  name: "Alice Smith",
+                },
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const res = await appObj.fetch(
+      new Request("http://localhost:3003/webhook/meta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(commentPayload),
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toBe("EVENT_RECEIVED");
+  });
 });

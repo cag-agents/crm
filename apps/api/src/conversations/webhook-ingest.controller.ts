@@ -18,6 +18,16 @@ import { AllowAnonymous } from "@thallesp/nestjs-better-auth";
 import { AgentTriggerService } from "../agent/agent-trigger.service";
 import { InjectDatabase } from "../database/database.constants";
 
+export interface WebhookMetadata {
+	brandName?: string;
+	company?: string;
+	budget?: number;
+	post_id?: string;
+	messageId?: string;
+	timestamp?: string;
+	chatId?: number;
+}
+
 export interface WebhookIngestDto {
 	platform: "instagram" | "whatsapp" | "telegram" | string;
 	eventType: "comment_to_dm" | "direct_message" | "brand_inquiry" | string;
@@ -27,7 +37,12 @@ export interface WebhookIngestDto {
 	commentId?: string;
 	text: string;
 	workspaceSlug?: string;
-	metadata?: Record<string, unknown>;
+	metadata?: WebhookMetadata;
+}
+
+interface ExtractedIdentity {
+	personName: string;
+	brandName: string;
 }
 
 @ApiTags("Webhooks")
@@ -147,7 +162,7 @@ export class WebhookIngestController {
 	private extractNames(
 		rawName: string,
 		payload: WebhookIngestDto,
-	): { personName: string; brandName: string } {
+	): ExtractedIdentity {
 		let personName = rawName;
 		let brandName = "boAt Lifestyle";
 
@@ -155,10 +170,7 @@ export class WebhookIngestController {
 		if (brandMatch?.[1]) {
 			brandName = brandMatch[1].trim();
 			personName = rawName.replace(/\([^)]+\)/g, "").trim();
-		} else if (
-			typeof payload.metadata?.brandName === "string" &&
-			payload.metadata.brandName
-		) {
+		} else if (payload.metadata?.brandName) {
 			brandName = payload.metadata.brandName;
 		}
 
@@ -166,10 +178,7 @@ export class WebhookIngestController {
 	}
 
 	private parseBudget(payload: WebhookIngestDto): number {
-		if (
-			payload.metadata?.budget &&
-			typeof payload.metadata.budget === "number"
-		) {
+		if (payload.metadata?.budget && Number.isFinite(payload.metadata.budget)) {
 			return payload.metadata.budget;
 		}
 

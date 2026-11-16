@@ -1,0 +1,82 @@
+{
+  "name": "Lead Auto-Capture from Social & Email",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-capture",
+        "options": {}
+      },
+      "id": "node-lead-webhook",
+      "name": "Lead Ingest Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nreturn [{\n  json: {\n    channel: body.channel || 'META',\n    senderId: body.senderId || 'unknown',\n    senderName: body.senderName || 'Prospective Lead',\n    email: body.email || null,\n    phone: body.phone || null,\n    initialMessage: body.message || body.text || '',\n    capturedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "node-lead-extract",
+      "name": "Extract Lead Attributes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/trpc/contact.create",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "firstName",
+              "value": "={{ $json.senderName.split(' ')[0] }}"
+            },
+            {
+              "name": "lastName",
+              "value": "={{ $json.senderName.split(' ').slice(1).join(' ') || '(Lead)' }}"
+            },
+            {
+              "name": "source",
+              "value": "INBOUND_SOCIAL"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-create-contact",
+      "name": "Save Lead to CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Lead Ingest Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Lead Attributes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Lead Attributes": {
+      "main": [
+        [
+          {
+            "node": "Save Lead to CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {}
+}

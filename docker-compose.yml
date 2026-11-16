@@ -70,7 +70,28 @@ services:
       kafka:
         condition: service_healthy
 
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: crm-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=Asia/Kolkata
+    volumes:
+      - crm-n8n:/home/node/.n8n
+      - ./services/n8n/workflows:/workflows:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   crm-postgres:
   crm-redis:
   crm-kafka:
+  crm-n8n:

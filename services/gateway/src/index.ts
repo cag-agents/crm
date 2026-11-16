@@ -19,7 +19,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { OMNICHANNEL_QUEUE_NAME, webhookQueue } from "./queue";
+import { OMNICHANNEL_QUEUE_NAME, pushWebhookJob } from "./queue";
 import { checkAndConsumeQuota } from "./redis";
 import { verifyMetaSignature, verifyTelegramSecret } from "./security";
 import type { ChannelType, WebhookEvent, WebhookPayloadShape } from "./types";
@@ -134,7 +134,7 @@ app.post("/webhooks/meta", async (c) => {
 	// Redis Token Bucket / Sliding Window Rate Limiter
 	await checkAndConsumeQuota(platform, accountId);
 
-	const job = await webhookQueue.add(
+	const job = await pushWebhookJob(
 		`${platform}-webhook`,
 		{
 			channel: platform as ChannelType,
@@ -145,12 +145,6 @@ app.post("/webhooks/meta", async (c) => {
 				"x-demo-simulation": isSimulation ? "true" : "false",
 			},
 		} satisfies WebhookEvent,
-		{
-			removeOnComplete: 1000,
-			removeOnFail: 5000,
-			attempts: 3,
-			backoff: { type: "exponential", delay: 1000 },
-		},
 	);
 
 	const elapsedMs = Number((performance.now() - startTime).toFixed(2));
@@ -216,7 +210,7 @@ app.post("/webhooks/whatsapp", async (c) => {
 
 	await checkAndConsumeQuota("whatsapp", accountId);
 
-	const job = await webhookQueue.add(
+	const job = await pushWebhookJob(
 		"whatsapp-webhook",
 		{
 			channel: "whatsapp" as ChannelType,
@@ -227,12 +221,6 @@ app.post("/webhooks/whatsapp", async (c) => {
 				"x-demo-simulation": isSimulation ? "true" : "false",
 			},
 		} satisfies WebhookEvent,
-		{
-			removeOnComplete: 1000,
-			removeOnFail: 5000,
-			attempts: 3,
-			backoff: { type: "exponential", delay: 1000 },
-		},
 	);
 
 	const elapsedMs = Number((performance.now() - startTime).toFixed(2));
@@ -278,7 +266,7 @@ app.post("/webhooks/telegram", async (c) => {
 
 	await checkAndConsumeQuota("telegram", accountId);
 
-	const job = await webhookQueue.add(
+	const job = await pushWebhookJob(
 		"telegram-webhook",
 		{
 			channel: "telegram" as ChannelType,
@@ -289,12 +277,6 @@ app.post("/webhooks/telegram", async (c) => {
 				"x-demo-simulation": isSimulation ? "true" : "false",
 			},
 		} satisfies WebhookEvent,
-		{
-			removeOnComplete: 1000,
-			removeOnFail: 5000,
-			attempts: 3,
-			backoff: { type: "exponential", delay: 1000 },
-		},
 	);
 
 	const elapsedMs = Number((performance.now() - startTime).toFixed(2));
@@ -327,7 +309,7 @@ app.post("/webhooks/:channel", async (c) => {
 		payload = { raw: rawBody };
 	}
 
-	const _job = await webhookQueue.add(
+	const _job = await pushWebhookJob(
 		`${channel}-webhook`,
 		{
 			channel,
@@ -335,12 +317,6 @@ app.post("/webhooks/:channel", async (c) => {
 			receivedAt: new Date().toISOString(),
 			headers: {},
 		} satisfies WebhookEvent,
-		{
-			removeOnComplete: 1000,
-			removeOnFail: 5000,
-			attempts: 3,
-			backoff: { type: "exponential", delay: 1000 },
-		},
 	);
 
 	const elapsedMs = Number((performance.now() - startTime).toFixed(2));

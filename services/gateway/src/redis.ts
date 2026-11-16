@@ -9,6 +9,12 @@ const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 export const redis = new Redis(REDIS_URL, {
 	maxRetriesPerRequest: null, // required by BullMQ
 	enableReadyCheck: false,
+	enableOfflineQueue: false, // Don't queue offline commands forever; allows instant fallback in CI
+	connectTimeout: 500,
+	retryStrategy(times) {
+		if (times > 2) return null; // stop reconnecting in offline/CI environments
+		return 500;
+	},
 });
 
 redis.on("connect", () => {
@@ -16,7 +22,10 @@ redis.on("connect", () => {
 });
 
 redis.on("error", (err: Error) => {
-	console.error("[gateway] Redis connection error:", err.message);
+	// Log once cleanly without crashing the process
+	if (process.env.NODE_ENV !== "test") {
+		console.warn("[gateway] Redis connection note:", err.message);
+	}
 });
 
 export const PLATFORM_LIMITS = {
@@ -34,8 +43,62 @@ export interface QuotaResult {
 	resetInSec: number;
 }
 
-// In-memory fallback in case Redis connection is unavailable in local test environments
+// In-memory fallback in case Redis connection is unavailable in local test / CI environments
 const memoryFallback = new Map<string, { count: number; resetAt: number }>();
+
+function consumeMemoryQuota(
+	platform: "instagram" | "whatsapp" | "telegram",
+	normalizedAccount: string,
+	config: { limit: number; windowSec: number },
+): QuotaResult {
+	const key = `ratelimit:${platform}:${normalizedAccount}`;
+	const now = Date.now();
+	const entry = memoryFallback.get(key);
+
+	if (!entry || now > entry.resetAt) {
+		memoryFallback.set(key, {
+			count: 1,
+			resetAt: now + config.windowSec * 1000,
+		});
+		const result: QuotaResult = {
+			allowed: true,
+			remaining: config.limit - 1,
+			limit: config.limit,
+			resetInSec: config.windowSec,
+		};
+		console.log(
+			`[REDIS-RATE-LIMITER] Platform: ${platform} | Account: ${normalizedAccount} | Quota Remaining: ${result.remaining}/${result.limit} (Window: ${config.windowSec}s)`,
+		);
+		return result;
+	}
+
+	if (entry.count >= config.limit) {
+		const resetInSec = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+		const result: QuotaResult = {
+			allowed: false,
+			remaining: 0,
+			limit: config.limit,
+			resetInSec,
+		};
+		console.log(
+			`[REDIS-RATE-LIMITER] Platform: ${platform} | Account: ${normalizedAccount} | Quota Remaining: 0/${result.limit} (Window: ${config.windowSec}s)`,
+		);
+		return result;
+	}
+
+	entry.count += 1;
+	const resetInSec = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+	const result: QuotaResult = {
+		allowed: true,
+		remaining: config.limit - entry.count,
+		limit: config.limit,
+		resetInSec,
+	};
+	console.log(
+		`[REDIS-RATE-LIMITER] Platform: ${platform} | Account: ${normalizedAccount} | Quota Remaining: ${result.remaining}/${result.limit} (Window: ${config.windowSec}s)`,
+	);
+	return result;
+}
 
 /**
  * Deterministic Token Bucket / Sliding Window rate limiter backed by Redis.
@@ -48,6 +111,12 @@ export async function checkAndConsumeQuota(
 	const config = PLATFORM_LIMITS[platform] ?? { limit: 500, windowSec: 3600 };
 	const normalizedAccount = accountId.trim() || "@creator_hq";
 	const key = `ratelimit:${platform}:${normalizedAccount}`;
+
+	// If Redis is not ready (e.g. CI runner where Redis is not provisioned),
+	// instantly use the in-memory token-bucket rate limiter.
+	if (redis.status !== "ready") {
+		return consumeMemoryQuota(platform, normalizedAccount, config);
+	}
 
 	try {
 		// Atomic Redis script: check quota, increment if allowed, set expiration on first access
@@ -103,52 +172,6 @@ export async function checkAndConsumeQuota(
 			`[gateway] Redis rate-limiter fallback activated for ${key}:`,
 			err instanceof Error ? err.message : String(err),
 		);
-
-		const now = Date.now();
-		const entry = memoryFallback.get(key);
-
-		if (!entry || now > entry.resetAt) {
-			memoryFallback.set(key, {
-				count: 1,
-				resetAt: now + config.windowSec * 1000,
-			});
-			const result: QuotaResult = {
-				allowed: true,
-				remaining: config.limit - 1,
-				limit: config.limit,
-				resetInSec: config.windowSec,
-			};
-			console.log(
-				`[REDIS-RATE-LIMITER] Platform: ${platform} | Account: ${normalizedAccount} | Quota Remaining: ${result.remaining}/${result.limit} (Window: ${config.windowSec}s)`,
-			);
-			return result;
-		}
-
-		if (entry.count >= config.limit) {
-			const resetInSec = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
-			const result: QuotaResult = {
-				allowed: false,
-				remaining: 0,
-				limit: config.limit,
-				resetInSec,
-			};
-			console.log(
-				`[REDIS-RATE-LIMITER] Platform: ${platform} | Account: ${normalizedAccount} | Quota Remaining: 0/${result.limit} (Window: ${config.windowSec}s)`,
-			);
-			return result;
-		}
-
-		entry.count += 1;
-		const resetInSec = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
-		const result: QuotaResult = {
-			allowed: true,
-			remaining: config.limit - entry.count,
-			limit: config.limit,
-			resetInSec,
-		};
-		console.log(
-			`[REDIS-RATE-LIMITER] Platform: ${platform} | Account: ${normalizedAccount} | Quota Remaining: ${result.remaining}/${result.limit} (Window: ${config.windowSec}s)`,
-		);
-		return result;
+		return consumeMemoryQuota(platform, normalizedAccount, config);
 	}
 }

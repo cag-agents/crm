@@ -200,16 +200,19 @@ export class OmnichannelService {
 		} else if (conv.channel.type === "EMAIL") {
 			try {
 				const emailPort = process.env.EMAIL_SERVICE_PORT || "3005";
-				const emailRes = await fetch(`http://localhost:${emailPort}/api/email/send`, {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						channelId: conv.channelId,
-						to: [conv.externalThreadId],
-						subject: `Re: ${conv.title || "Support Thread"}`,
-						body: text,
-					}),
-				});
+				const emailRes = await fetch(
+					`http://localhost:${emailPort}/api/email/send`,
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							channelId: conv.channelId,
+							to: [conv.externalThreadId],
+							subject: `Re: ${conv.title || "Support Thread"}`,
+							body: text,
+						}),
+					},
+				);
 				const emailData = (await emailRes.json()) as {
 					success?: boolean;
 					messageId?: string;

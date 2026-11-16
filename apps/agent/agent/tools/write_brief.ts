@@ -34,6 +34,16 @@ export default defineTool({
 				.optional()
 				.describe('e.g. "Executive", "Security", "Finance"'),
 			location: z.string().optional(),
+			brandOverview: z
+				.string()
+				.optional()
+				.describe("Summary of the sponsoring brand"),
+			deliverables: z.string().optional().describe("Requested deliverables"),
+			commercialsInr: z.string().optional().describe("Commercial terms in INR"),
+			recommendedAction: z
+				.string()
+				.optional()
+				.describe("Recommended next action"),
 		}),
 		evidence: z
 			.array(

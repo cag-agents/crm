@@ -1,5 +1,5 @@
 ---
-description: Use when writing the Background panel on a contact — the shape, the tone, and when to write nothing at all.
+description: Use when writing the Background panel on a contact or a Creator Sponsorship Brief — the shape, the tone, and structured sections.
 ---
 
 # Writing a brief
@@ -39,6 +39,21 @@ security leader" is not.
 - `location` — city and country, as the profile writes it
 
 An empty line is better than a guessed one. The panel renders what it has.
+
+## Brand Sponsorship & Collab Briefs
+
+When writing a Creator Sponsorship Brief for a brand partnership inquiry or brand collab deal, format the brief with these four required sections:
+
+1. **Brand Overview**: Company background, target customer alignment, domain, and previous creator collaborations.
+2. **Requested Deliverables**: Exact content formats and scope (e.g. 1x Dedicated YouTube Video, 2x Instagram Reels, Telegram community post).
+3. **Commercials & Exclusivity (INR)**: Proposed commercial budget in Indian Rupees (`₹`, Lakhs/Crores), benchmark evaluation, payment terms, and category exclusivity period.
+4. **Recommended Next Action**: Clear recommendation: accept offer (`APPROVE_READY`), propose structured counter-offer (`COUNTER_OFFER_RECOMMENDED`), or escalate for Human-in-the-Loop Host confirmation (`HIGH_RISK_ESCALATION`).
+
+Structured collab lines in `sections`:
+- `brandOverview` — concise summary of the sponsoring brand
+- `deliverables` — requested deliverables summary
+- `commercialsInr` — financial compensation and exclusivity in INR
+- `recommendedAction` — next operational step for the talent team
 
 ## When to write nothing
 

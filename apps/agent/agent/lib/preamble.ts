@@ -288,13 +288,13 @@ export async function dealPreamble(
 		}.`,
 		`Stage: **${deal.stage}**${
 			deal.amount
-				? `. Amount: ${deal.amount} ${deal.currency ?? ""}`.trim()
+				? `. Amount: ₹${deal.amount} ${deal.currency ?? "INR"}`.trim()
 				: ""
 		}${
 			deal.expectedCloseDate
 				? `. Expected close: ${deal.expectedCloseDate.toDateString()}`
 				: ""
-		}.`,
+		}. Default currency for creator sponsorships and brand collabs is INR (₹, Lakhs/Crores) unless another currency is specified.`,
 		deal.lastActivityAt
 			? `Last touched ${deal.lastActivityAt.toDateString()}.`
 			: "Nothing has happened on it yet.",

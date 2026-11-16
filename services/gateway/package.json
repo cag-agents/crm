@@ -1,26 +1,26 @@
 {
-  "name": "@crm/gateway",
-  "version": "0.1.0",
-  "type": "module",
-  "private": true,
-  "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun",
-    "start": "bun run dist/index.js",
-    "lint": "biome lint src/",
-    "check-types": "tsc --noEmit",
-    "test": "bun test"
-  },
-  "dependencies": {
-    "bullmq": "^5.0.0",
-    "hono": "^4.0.0",
-    "ioredis": "^5.4.0",
-    "kafkajs": "^2.2.0",
-    "zod": "^3.23.0"
-  },
-  "devDependencies": {
-    "@crm/typescript-config": "workspace:*",
-    "@types/bun": "latest",
-    "typescript": "5.9.2"
-  }
+	"name": "@crm/gateway",
+	"version": "0.1.0",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "bun run --watch src/index.ts",
+		"build": "bun build src/index.ts --outdir dist --target bun",
+		"start": "bun run dist/index.js",
+		"lint": "biome lint src/",
+		"check-types": "tsc --noEmit",
+		"test": "bun test"
+	},
+	"dependencies": {
+		"bullmq": "^5.0.0",
+		"hono": "^4.0.0",
+		"ioredis": "^5.4.0",
+		"kafkajs": "^2.2.0",
+		"zod": "^3.23.0"
+	},
+	"devDependencies": {
+		"@crm/typescript-config": "workspace:*",
+		"@types/bun": "latest",
+		"typescript": "5.9.2"
+	}
 }

@@ -1,102 +1,102 @@
 {
-  "name": "Omnichannel SLA Escalation Alert",
-  "nodes": [
-    {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "minutes",
-              "minutesInterval": 5
-            }
-          ]
-        }
-      },
-      "id": "node-schedule-sla",
-      "name": "Every 5 Minutes",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [240, 300]
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "http://host.docker.internal:3001/api/omnichannel/conversations?status=OPEN&unread=true",
-        "options": {}
-      },
-      "id": "node-fetch-open-convs",
-      "name": "Fetch Unread Conversations",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [480, 300]
-    },
-    {
-      "parameters": {
-        "jsCode": "const convs = $input.first().json.conversations || [];\nconst now = Date.now();\nconst SLA_THRESHOLD_MS = 15 * 60 * 1000; // 15 mins\n\nconst overdue = convs.filter(c => {\n  const lastMsgTime = new Date(c.lastMessageAt).getTime();\n  return (now - lastMsgTime) > SLA_THRESHOLD_MS && c.status === 'OPEN';\n});\n\nreturn overdue.map(c => ({\n  json: {\n    conversationId: c.id,\n    title: c.title,\n    channelId: c.channelId,\n    minutesPending: Math.round((now - new Date(c.lastMessageAt).getTime()) / 60000),\n    alert: `⚠️ SLA Breach Warning: Conversation '${c.title}' has been unread for over 15 minutes!`\n  }\n}));"
-      },
-      "id": "node-filter-sla-breach",
-      "name": "Filter SLA Overdue",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [720, 300]
-    },
-    {
-      "parameters": {
-        "method": "PATCH",
-        "url": "=http://host.docker.internal:3001/api/omnichannel/conversations/{{ $json.conversationId }}",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "priority",
-              "value": "URGENT"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "node-escalate-priority",
-      "name": "Escalate to URGENT",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [960, 300]
-    }
-  ],
-  "connections": {
-    "Every 5 Minutes": {
-      "main": [
-        [
-          {
-            "node": "Fetch Unread Conversations",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fetch Unread Conversations": {
-      "main": [
-        [
-          {
-            "node": "Filter SLA Overdue",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Filter SLA Overdue": {
-      "main": [
-        [
-          {
-            "node": "Escalate to URGENT",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "active": true,
-  "settings": {}
+	"name": "Omnichannel SLA Escalation Alert",
+	"nodes": [
+		{
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "minutes",
+							"minutesInterval": 5
+						}
+					]
+				}
+			},
+			"id": "node-schedule-sla",
+			"name": "Every 5 Minutes",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [240, 300]
+		},
+		{
+			"parameters": {
+				"method": "GET",
+				"url": "http://host.docker.internal:3001/api/omnichannel/conversations?status=OPEN&unread=true",
+				"options": {}
+			},
+			"id": "node-fetch-open-convs",
+			"name": "Fetch Unread Conversations",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [480, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "const convs = $input.first().json.conversations || [];\nconst now = Date.now();\nconst SLA_THRESHOLD_MS = 15 * 60 * 1000; // 15 mins\n\nconst overdue = convs.filter(c => {\n  const lastMsgTime = new Date(c.lastMessageAt).getTime();\n  return (now - lastMsgTime) > SLA_THRESHOLD_MS && c.status === 'OPEN';\n});\n\nreturn overdue.map(c => ({\n  json: {\n    conversationId: c.id,\n    title: c.title,\n    channelId: c.channelId,\n    minutesPending: Math.round((now - new Date(c.lastMessageAt).getTime()) / 60000),\n    alert: `⚠️ SLA Breach Warning: Conversation '${c.title}' has been unread for over 15 minutes!`\n  }\n}));"
+			},
+			"id": "node-filter-sla-breach",
+			"name": "Filter SLA Overdue",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [720, 300]
+		},
+		{
+			"parameters": {
+				"method": "PATCH",
+				"url": "=http://host.docker.internal:3001/api/omnichannel/conversations/{{ $json.conversationId }}",
+				"sendBody": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "priority",
+							"value": "URGENT"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "node-escalate-priority",
+			"name": "Escalate to URGENT",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [960, 300]
+		}
+	],
+	"connections": {
+		"Every 5 Minutes": {
+			"main": [
+				[
+					{
+						"node": "Fetch Unread Conversations",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Unread Conversations": {
+			"main": [
+				[
+					{
+						"node": "Filter SLA Overdue",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Filter SLA Overdue": {
+			"main": [
+				[
+					{
+						"node": "Escalate to URGENT",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": true,
+	"settings": {}
 }

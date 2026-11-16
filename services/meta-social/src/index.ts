@@ -2,7 +2,11 @@ import { Hono } from "hono";
 import { type Prisma, db } from "@crm/db";
 import { processFacebookMessage } from "./facebook";
 import { processInstagramMessage } from "./instagram";
-import { processFacebookFeedComment, processInstagramComment, replyToComment } from "./content";
+import {
+	processFacebookFeedComment,
+	processInstagramComment,
+	replyToComment,
+} from "./content";
 import { sendMetaMessage } from "./sender";
 import type { MetaWebhookPayload } from "./types";
 
@@ -16,19 +20,20 @@ app.get("/health", (c) => c.json({ status: "ok", service: "meta-social" }));
  * Handles GET request from Meta when configuring callback URL in App Dashboard
  */
 app.get("/webhook/meta", (c) => {
-  const mode = c.req.query("hub.mode");
-  const token = c.req.query("hub.verify_token");
-  const challenge = c.req.query("hub.challenge");
+	const mode = c.req.query("hub.mode");
+	const token = c.req.query("hub.verify_token");
+	const challenge = c.req.query("hub.challenge");
 
-  const expectedToken = process.env.META_WEBHOOK_VERIFY_TOKEN || "cag_crm_meta_token";
+	const expectedToken =
+		process.env.META_WEBHOOK_VERIFY_TOKEN || "cag_crm_meta_token";
 
-  if (mode === "subscribe" && token === expectedToken) {
-    console.log("[meta-social] Webhook verified successfully");
-    return c.text(challenge || "");
-  }
+	if (mode === "subscribe" && token === expectedToken) {
+		console.log("[meta-social] Webhook verified successfully");
+		return c.text(challenge || "");
+	}
 
-  console.warn("[meta-social] Webhook verification failed token mismatch");
-  return c.text("Forbidden", 403);
+	console.warn("[meta-social] Webhook verification failed token mismatch");
+	return c.text("Forbidden", 403);
 });
 
 /**
@@ -36,61 +41,78 @@ app.get("/webhook/meta", (c) => {
  * Receives webhook notifications from Facebook Pages & Instagram (both DMs and post comments)
  */
 app.post("/webhook/meta", async (c) => {
-  try {
-    const payload = (await c.req.json()) as MetaWebhookPayload;
+	try {
+		const payload = (await c.req.json()) as MetaWebhookPayload;
 
-    // 1. Audit log webhook event in Prisma DB
-    db.webhookEvent.create({
-      data: {
-        channelType: payload.object === "instagram" ? "INSTAGRAM" : "FACEBOOK",
-        payload: payload as unknown as Prisma.InputJsonValue,
-        eventType: "messaging_or_content",
-        status: "RECEIVED",
-      },
-    }).catch((err) => console.error("[meta-social] Failed to audit webhook event:", err));
+		// 1. Audit log webhook event in Prisma DB
+		db.webhookEvent
+			.create({
+				data: {
+					channelType:
+						payload.object === "instagram" ? "INSTAGRAM" : "FACEBOOK",
+					payload: payload as unknown as Prisma.InputJsonValue,
+					eventType: "messaging_or_content",
+					status: "RECEIVED",
+				},
+			})
+			.catch((err) =>
+				console.error("[meta-social] Failed to audit webhook event:", err),
+			);
 
-    // 2. Process entries asynchronously so Meta receives 200 OK in <15s
-    if (payload.entry && Array.isArray(payload.entry)) {
-      for (const entry of payload.entry) {
-        const targetId = entry.id;
+		// 2. Process entries asynchronously so Meta receives 200 OK in <15s
+		if (payload.entry && Array.isArray(payload.entry)) {
+			for (const entry of payload.entry) {
+				const targetId = entry.id;
 
-        // Process Direct Messaging events
-        if (entry.messaging && Array.isArray(entry.messaging)) {
-          for (const msgEvent of entry.messaging) {
-            if (payload.object === "instagram") {
-              processInstagramMessage(targetId, msgEvent).catch((err) =>
-                console.error("[meta-social] Instagram DM processing error:", err)
-              );
-            } else {
-              processFacebookMessage(targetId, msgEvent).catch((err) =>
-                console.error("[meta-social] Facebook DM processing error:", err)
-              );
-            }
-          }
-        }
+				// Process Direct Messaging events
+				if (entry.messaging && Array.isArray(entry.messaging)) {
+					for (const msgEvent of entry.messaging) {
+						if (payload.object === "instagram") {
+							processInstagramMessage(targetId, msgEvent).catch((err) =>
+								console.error(
+									"[meta-social] Instagram DM processing error:",
+									err,
+								),
+							);
+						} else {
+							processFacebookMessage(targetId, msgEvent).catch((err) =>
+								console.error(
+									"[meta-social] Facebook DM processing error:",
+									err,
+								),
+							);
+						}
+					}
+				}
 
-        // Process Feed Comments & Social Interactions
-        if (entry.changes && Array.isArray(entry.changes)) {
-          for (const change of entry.changes) {
-            if (payload.object === "instagram") {
-              processInstagramComment(targetId, change).catch((err) =>
-                console.error("[meta-social] Instagram Comment processing error:", err)
-              );
-            } else {
-              processFacebookFeedComment(targetId, change).catch((err) =>
-                console.error("[meta-social] Facebook Feed processing error:", err)
-              );
-            }
-          }
-        }
-      }
-    }
+				// Process Feed Comments & Social Interactions
+				if (entry.changes && Array.isArray(entry.changes)) {
+					for (const change of entry.changes) {
+						if (payload.object === "instagram") {
+							processInstagramComment(targetId, change).catch((err) =>
+								console.error(
+									"[meta-social] Instagram Comment processing error:",
+									err,
+								),
+							);
+						} else {
+							processFacebookFeedComment(targetId, change).catch((err) =>
+								console.error(
+									"[meta-social] Facebook Feed processing error:",
+									err,
+								),
+							);
+						}
+					}
+				}
+			}
+		}
 
-    return c.text("EVENT_RECEIVED", 200);
-  } catch (err) {
-    console.error("[meta-social] Error parsing webhook payload:", err);
-    return c.text("Bad Request", 400);
-  }
+		return c.text("EVENT_RECEIVED", 200);
+	} catch (err) {
+		console.error("[meta-social] Error parsing webhook payload:", err);
+		return c.text("Bad Request", 400);
+	}
 });
 
 /**
@@ -98,29 +120,32 @@ app.post("/webhook/meta", async (c) => {
  * Allows CRM agents or UI to send messages to Facebook / Instagram users
  */
 app.post("/api/send", async (c) => {
-  try {
-    const body = await c.req.json();
-    const { channelId, recipientId, text } = body;
+	try {
+		const body = await c.req.json();
+		const { channelId, recipientId, text } = body;
 
-    if (!channelId || !recipientId || !text) {
-      return c.json({ error: "channelId, recipientId, and text are required" }, 400);
-    }
+		if (!channelId || !recipientId || !text) {
+			return c.json(
+				{ error: "channelId, recipientId, and text are required" },
+				400,
+			);
+		}
 
-    const result = await sendMetaMessage({
-      channelId,
-      recipientId,
-      text,
-    });
+		const result = await sendMetaMessage({
+			channelId,
+			recipientId,
+			text,
+		});
 
-    if (!result.success) {
-      return c.json({ error: result.error }, 500);
-    }
+		if (!result.success) {
+			return c.json({ error: result.error }, 500);
+		}
 
-    return c.json({ success: true, messageId: result.messageId });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ error: message }, 500);
-  }
+		return c.json({ success: true, messageId: result.messageId });
+	} catch (err: unknown) {
+		const message = err instanceof Error ? err.message : String(err);
+		return c.json({ error: message }, 500);
+	}
 });
 
 /**
@@ -128,36 +153,36 @@ app.post("/api/send", async (c) => {
  * Allows CRM agents or automations to reply directly to Facebook & Instagram comments
  */
 app.post("/api/comment/reply", async (c) => {
-  try {
-    const body = await c.req.json();
-    const { commentId, message, token } = body;
+	try {
+		const body = await c.req.json();
+		const { commentId, message, token } = body;
 
-    if (!commentId || !message) {
-      return c.json({ error: "commentId and message are required" }, 400);
-    }
+		if (!commentId || !message) {
+			return c.json({ error: "commentId and message are required" }, 400);
+		}
 
-    const result = await replyToComment({
-      commentId,
-      message,
-      token,
-    });
+		const result = await replyToComment({
+			commentId,
+			message,
+			token,
+		});
 
-    if (!result.success) {
-      return c.json({ error: result.error }, 500);
-    }
+		if (!result.success) {
+			return c.json({ error: result.error }, 500);
+		}
 
-    return c.json({ success: true, id: result.id });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ error: message }, 500);
-  }
+		return c.json({ success: true, id: result.id });
+	} catch (err: unknown) {
+		const message = err instanceof Error ? err.message : String(err);
+		return c.json({ error: message }, 500);
+	}
 });
 
 const PORT = Number(process.env.META_SERVICE_PORT || 3003);
 
 export default {
-  port: PORT,
-  fetch: app.fetch,
+	port: PORT,
+	fetch: app.fetch,
 };
 
 console.log(`[meta-social] Service running on http://localhost:${PORT}`);

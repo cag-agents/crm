@@ -47,7 +47,7 @@ function AddButton(props: ComponentProps<typeof Button>) {
 	return (
 		<Button {...props}>
 			<Icon icon={Add} data-icon="inline-start" />
-			New deal
+			New Brand Collab
 		</Button>
 	);
 }
@@ -115,9 +115,10 @@ function CreateDealForm({ companyId }: { companyId?: string }) {
 			</SheetTrigger>
 			<SheetContent side="right">
 				<SheetHeader>
-					<SheetTitle>New deal</SheetTitle>
+					<SheetTitle>New Brand Collab</SheetTitle>
 					<SheetDescription>
-						Every deal belongs to a company and has someone's name against it.
+						Log a new sponsorship campaign, media placement, or brand
+						collaboration.
 					</SheetDescription>
 				</SheetHeader>
 
@@ -142,12 +143,12 @@ function CreateDealForm({ companyId }: { companyId?: string }) {
 				>
 					<FieldGroup>
 						<Field>
-							<FieldLabel htmlFor={nameId}>Name</FieldLabel>
+							<FieldLabel htmlFor={nameId}>Collab title</FieldLabel>
 							<Input
 								id={nameId}
 								value={name}
 								onChange={(event) => setName(event.target.value)}
-								placeholder="Stripe — CAG CRM"
+								placeholder="e.g. boAt Nirvana ANC Launch"
 								autoComplete="off"
 								required
 							/>

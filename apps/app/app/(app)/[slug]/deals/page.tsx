@@ -18,7 +18,7 @@ import { dealsSearchParams } from "./deals-search-params";
 import { DealsTable } from "./deals-table";
 
 export const metadata: Metadata = {
-	title: "Deals",
+	title: "Brand Collabs & Sponsorships",
 };
 
 export default function DealsPage({
@@ -28,9 +28,10 @@ export default function DealsPage({
 		<PageShell className="min-h-0">
 			<PageShellHeader>
 				<PageShellHeading>
-					<PageShellTitle>Deals</PageShellTitle>
+					<PageShellTitle>Brand Collabs & Sponsorships</PageShellTitle>
 					<PageShellDescription>
-						The pipeline, and everything that has already closed.
+						The sponsorship revenue pipeline, active deliverables, and published
+						collabs.
 					</PageShellDescription>
 				</PageShellHeading>
 				<PageShellActions>

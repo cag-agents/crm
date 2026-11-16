@@ -22,9 +22,9 @@ import { SEARCH_PARAM } from "@/lib/search-param-keys";
 import { useTRPC } from "@/lib/trpc/client";
 
 const GROUP_LABEL = {
-	company: "Companies",
-	contact: "Contacts",
-	deal: "Deals",
+	company: "Brands & Sponsors",
+	contact: "Talent & Network",
+	deal: "Brand Collabs",
 } as const;
 
 const KINDS = ["company", "contact", "deal"] as const;
@@ -70,11 +70,11 @@ export function QuickSwitcher() {
 			open={open}
 			onOpenChange={(next) => setOpen(next || null)}
 			title="Search"
-			description="Jump to a company, contact or deal"
+			description="Jump to a brand, talent or brand collab"
 		>
 			<Command shouldFilter={false}>
 				<CommandInput
-					placeholder="Search companies, contacts and deals…"
+					placeholder="Search brands, talent, and brand collabs…"
 					value={query}
 					onValueChange={setQuery}
 				/>

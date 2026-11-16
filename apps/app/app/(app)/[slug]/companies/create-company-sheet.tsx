@@ -43,7 +43,7 @@ function AddButton(props: ComponentProps<typeof Button>) {
 	return (
 		<Button {...props}>
 			<Icon icon={Add} data-icon="inline-start" />
-			New company
+			Add Brand Partner
 		</Button>
 	);
 }
@@ -96,10 +96,10 @@ function CreateCompanyForm() {
 			</SheetTrigger>
 			<SheetContent side="right">
 				<SheetHeader>
-					<SheetTitle>New company</SheetTitle>
+					<SheetTitle>Add Brand Partner</SheetTitle>
 					<SheetDescription>
-						Give it a name and a domain. The agent fills in the logo,
-						description, industry, address and socials.
+						Give it a brand name and a domain. The agent fills in the logo,
+						description, category, address and socials.
 					</SheetDescription>
 				</SheetHeader>
 

@@ -171,7 +171,7 @@ export async function processWhatsAppMessage(
 			externalMessageId: message.id,
 			direction: "INBOUND",
 			senderType: "CONTACT",
-			senderId: fromPhone,
+			senderId: null,
 			senderName: contactProfile?.profile?.name || contact.firstName,
 			content,
 			contentType,

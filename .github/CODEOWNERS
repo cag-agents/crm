@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CODEOWNERS — Auto-assign reviewers based on file ownership
+# ─────────────────────────────────────────────────────────────────────────────
+# When a PR touches files matching these patterns, GitHub auto-requests
+# reviews from the listed owners. This keeps the right person in the loop.
+#
+# Team: Chhayansh (lead), Ashish, Garvit
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Chhayansh: Core, Gateway, DevOps, WhatsApp, Telegram, Orchestrator ──────
+/apps/api/                              @chhayanshporwal
+/services/gateway/                      @chhayanshporwal
+/services/whatsapp/                     @chhayanshporwal
+/services/telegram/                     @chhayanshporwal
+/services/orchestrator/                 @chhayanshporwal
+/.github/                               @chhayanshporwal
+/docker-compose*.yml                    @chhayanshporwal
+/infra/                                 @chhayanshporwal
+
+# ── Ashish: Meta (FB/IG), LinkedIn, SMS, Rate Limiter ────────────────────────
+/services/meta-social/                  @ashish
+/services/linkedin/                     @ashish
+/services/sms/                          @ashish
+/services/rate-limiter/                 @ashish
+
+# ── Garvit: Frontend, Inbox, Email, Analytics, Mobile ────────────────────────
+/apps/app/src/**/inbox/                 @garvit
+/apps/app/src/**/analytics/             @garvit
+/apps/app/src/**/admin/                 @garvit
+/services/email/                        @garvit
+/apps/mobile/                           @garvit
+
+# ── Shared: DB schema & shared types require ALL team approval ───────────────
+/packages/db/prisma/schema.prisma       @chhayanshporwal @ashish @garvit
+/packages/db/prisma/migrations/         @chhayanshporwal @ashish @garvit
+/packages/shared-types/                 @chhayanshporwal @ashish @garvit
+
+# ── CRM core (inherited, be careful) ────────────────────────────────────────
+/apps/agent/                            @chhayanshporwal
+/packages/auth/                         @chhayanshporwal
+/packages/ui/                           @garvit

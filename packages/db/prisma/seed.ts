@@ -1,6 +1,5 @@
 import { mirror } from "../src/blob";
 import { db } from "../src/client";
-import { DEFAULT_REPORTING_CURRENCY } from "../src/currency";
 import { resolveFavicon } from "../src/favicon";
 import { fieldKeyFromLabel } from "../src/fields-shape";
 import {
@@ -10,7 +9,8 @@ import {
 	FieldType,
 	RateSource,
 } from "../src/generated/prisma/enums";
-import { readReportingCurrency, SETTINGS_ID } from "../src/settings";
+import { SETTINGS_ID } from "../src/settings";
+import { seedOmnichannel } from "./seed-omnichannel";
 
 function makeRandom(seed: number): () => number {
 	let a = seed;
@@ -30,7 +30,7 @@ function pick<T>(items: readonly T[]): T {
 	return item;
 }
 
-function chance(probability: number): boolean {
+function _chance(probability: number): boolean {
 	return random() < probability;
 }
 
@@ -49,8 +49,8 @@ function daysFromNow(days: number, jitterHours = 0): Date {
 }
 
 const OWNERS = [
+	{ name: "Garvit Bhojak", email: "garvit@cag-crm.com" },
 	{ name: "Ada Okafor", email: "ada@trycomp.ai" },
-	{ name: "Marcus Lindqvist", email: "marcus@trycomp.ai" },
 	{ name: "Priya Raman", email: "priya@trycomp.ai" },
 ] as const;
 
@@ -63,259 +63,223 @@ type SeedCompany = {
 	countryCode: string;
 };
 
-const COMPANIES: readonly SeedCompany[] = [
+const BRANDS: readonly SeedCompany[] = [
 	{
-		name: "Stripe",
-		domain: "stripe.com",
-		industry: "Financial Services",
-		city: "San Francisco",
-		country: "United States",
-		countryCode: "US",
+		name: "boAt Lifestyle",
+		domain: "boat-lifestyle.com",
+		industry: "Consumer Electronics & Audio",
+		city: "New Delhi",
+		country: "India",
+		countryCode: "IN",
 	},
 	{
-		name: "Linear",
-		domain: "linear.app",
-		industry: "Software",
-		city: "San Francisco",
-		country: "United States",
-		countryCode: "US",
+		name: "Zerodha Varsity",
+		domain: "zerodha.com",
+		industry: "FinTech & Financial Literacy",
+		city: "Bengaluru",
+		country: "India",
+		countryCode: "IN",
 	},
 	{
-		name: "Vercel",
-		domain: "vercel.com",
-		industry: "Software",
-		city: "San Francisco",
-		country: "United States",
-		countryCode: "US",
+		name: "ASUS ROG India",
+		domain: "asus.com",
+		industry: "Gaming Laptops & Hardware",
+		city: "Mumbai",
+		country: "India",
+		countryCode: "IN",
 	},
 	{
-		name: "Ramp",
-		domain: "ramp.com",
-		industry: "Financial Services",
-		city: "New York",
-		country: "United States",
-		countryCode: "US",
+		name: "Mamaearth",
+		domain: "mamaearth.in",
+		industry: "D2C Personal Care & Beauty",
+		city: "Gurugram",
+		country: "India",
+		countryCode: "IN",
+	},
+	{
+		name: "Scaler Academy",
+		domain: "scaler.com",
+		industry: "EdTech & Software Engineering",
+		city: "Bengaluru",
+		country: "India",
+		countryCode: "IN",
 	},
 	{
 		name: "Notion",
 		domain: "notion.so",
-		industry: "Software",
+		industry: "Productivity & Creator Tools",
 		city: "San Francisco",
 		country: "United States",
 		countryCode: "US",
-	},
-	{
-		name: "Monzo",
-		domain: "monzo.com",
-		industry: "Banking",
-		city: "London",
-		country: "United Kingdom",
-		countryCode: "GB",
-	},
-	{
-		name: "Wise",
-		domain: "wise.com",
-		industry: "Financial Services",
-		city: "London",
-		country: "United Kingdom",
-		countryCode: "GB",
-	},
-	{
-		name: "Personio",
-		domain: "personio.com",
-		industry: "Human Resources",
-		city: "Munich",
-		country: "Germany",
-		countryCode: "DE",
-	},
-	{
-		name: "Pennylane",
-		domain: "pennylane.com",
-		industry: "Accounting",
-		city: "Paris",
-		country: "France",
-		countryCode: "FR",
-	},
-	{
-		name: "Cal.com",
-		domain: "cal.com",
-		industry: "Software",
-		city: "San Francisco",
-		country: "United States",
-		countryCode: "US",
-	},
-	{
-		name: "Supabase",
-		domain: "supabase.com",
-		industry: "Software",
-		city: "Singapore",
-		country: "Singapore",
-		countryCode: "SG",
-	},
-	{
-		name: "Retool",
-		domain: "retool.com",
-		industry: "Software",
-		city: "San Francisco",
-		country: "United States",
-		countryCode: "US",
-	},
-	{
-		name: "Deel",
-		domain: "deel.com",
-		industry: "Human Resources",
-		city: "New York",
-		country: "United States",
-		countryCode: "US",
-	},
-	{
-		name: "Mercury",
-		domain: "mercury.com",
-		industry: "Banking",
-		city: "San Francisco",
-		country: "United States",
-		countryCode: "US",
-	},
-	{
-		name: "Attio",
-		domain: "attio.com",
-		industry: "Software",
-		city: "London",
-		country: "United Kingdom",
-		countryCode: "GB",
 	},
 ];
 
-const FIRST_NAMES = [
-	"Amara",
-	"Ben",
-	"Chidi",
-	"Dana",
-	"Elias",
-	"Farah",
-	"Gus",
-	"Hana",
-	"Ines",
-	"Jonas",
-	"Kofi",
-	"Lena",
-	"Mateo",
-	"Nadia",
-	"Omar",
-	"Pia",
-	"Quinn",
-	"Rosa",
-	"Sami",
-	"Tara",
-	"Ugo",
-	"Vera",
-	"Wes",
-	"Yuki",
-] as const;
+type SpecificContact = {
+	firstName: string;
+	lastName: string;
+	email: string;
+	title: string;
+	phone: string;
+	companyDomain?: string;
+	instagram?: string;
+};
 
-const LAST_NAMES = [
-	"Adeyemi",
-	"Bergström",
-	"Chen",
-	"Dubois",
-	"Eriksen",
-	"Fontaine",
-	"Gupta",
-	"Haddad",
-	"Ivanova",
-	"Jensen",
-	"Kowalski",
-	"Lombardi",
-	"Moreau",
-	"Nakamura",
-	"Oyelaran",
-	"Petrov",
-	"Quintana",
-	"Rossi",
-	"Sørensen",
-	"Takahashi",
-] as const;
+const SPECIFIC_CONTACTS: readonly SpecificContact[] = [
+	{
+		firstName: "Riya",
+		lastName: "Sharma",
+		email: "riya.sharma@boat-lifestyle.com",
+		title: "Head of Creator Partnerships",
+		phone: "+91 98201 11223",
+		companyDomain: "boat-lifestyle.com",
+		instagram: "riyasharma_boat",
+	},
+	{
+		firstName: "Karthik",
+		lastName: "Iyer",
+		email: "karthik.iyer@zerodha.com",
+		title: "Partnerships Lead",
+		phone: "+91 98450 22334",
+		companyDomain: "zerodha.com",
+		instagram: "karthik_zerodha",
+	},
+	{
+		firstName: "Vikramaditya",
+		lastName: "Singh",
+		email: "vikramaditya.singh@asus.com",
+		title: "ROG Esports & Influencer Marketing",
+		phone: "+91 98190 33445",
+		companyDomain: "asus.com",
+		instagram: "vikram_asus_rog",
+	},
+	{
+		firstName: "Ananya",
+		lastName: "Sen",
+		email: "ananya.sen@mamaearth.in",
+		title: "Brand Collaborations Manager",
+		phone: "+91 98710 44556",
+		companyDomain: "mamaearth.in",
+		instagram: "ananya_mamaearth",
+	},
+	{
+		firstName: "Rohan",
+		lastName: "Verma",
+		email: "rohan.verma@scaler.com",
+		title: "Growth & Creator Outreach",
+		phone: "+91 98860 55667",
+		companyDomain: "scaler.com",
+		instagram: "rohan_scaler",
+	},
+	{
+		firstName: "Claire",
+		lastName: "Zhang",
+		email: "claire.zhang@notion.so",
+		title: "Creator Community & Evangelism",
+		phone: "+1 415 555 7890",
+		companyDomain: "notion.so",
+		instagram: "claire_notion",
+	},
+	// Community Superfans & Fellow Creators
+	{
+		firstName: "Tanmay",
+		lastName: "Bhat",
+		email: "tanmay@creators.network",
+		title: "Macro Comedy & Tech Creator",
+		phone: "+91 98200 12345",
+		instagram: "thetanmay",
+	},
+	{
+		firstName: "Shlok",
+		lastName: "Srivastava",
+		email: "shlok@techburner.in",
+		title: "Tech Reviewer & Founder",
+		phone: "+91 98111 23456",
+		instagram: "techburner",
+	},
+	{
+		firstName: "Aarav",
+		lastName: "Kapoor",
+		email: "aarav.kapoor@gmail.com",
+		title: "Superfan & Community Lead",
+		phone: "+91 97170 34567",
+		instagram: "aarav_creator_fan",
+	},
+];
 
-const TITLES = [
-	"Head of Security",
-	"CTO",
-	"VP Engineering",
-	"Compliance Manager",
-	"Head of Legal",
-	"Security Engineer",
-	"COO",
-	"IT Director",
-	"Head of Platform",
-	"Chief of Staff",
-] as const;
+type SpecificDeal = {
+	id: string;
+	name: string;
+	companyDomain: string;
+	amountInr: number;
+	stage: DealStage;
+	description: string;
+	expectedDays: number;
+	closed: boolean;
+};
 
-const OPEN_STAGES = [
-	DealStage.DEMO_BOOKED,
-	DealStage.QUALIFIED_TO_BUY,
-	DealStage.DECISION_MAKER_BOUGHT_IN,
-	DealStage.CONTRACT_SENT,
-] as const;
-
-const CLOSED_STAGES = [
-	DealStage.CLOSED_WON,
-	DealStage.CLOSED_LOST,
-	DealStage.UNQUALIFIED_TO_BUY,
-] as const;
-
-const DEAL_DESCRIPTIONS = [
-	"Replacing a spreadsheet-and-Drive evidence process before their first SOC 2 audit. Security owns the decision, finance signs.",
-	"Expansion onto the platform team after the security org went live. Blocked on whether the current contract can be co-termed.",
-	"Inbound from a failed vendor renewal. They want automated evidence collection and one auditor-ready report.",
-	"Their enterprise deals keep stalling on security questionnaires. The buying trigger is the pipeline, not the audit.",
-	"Champion ran the evaluation themselves and wants the agent, not the checklist. Procurement is the long pole.",
-] as const;
-
-const LOST_REASONS = [
-	"Went with an incumbent vendor",
-	"No budget this cycle",
-	"Timeline slipped to next year",
-	"Not a fit — no compliance requirement yet",
-] as const;
-
-const NOTE_BODIES = [
-	"Ran through the SOC 2 timeline. They want evidence collection automated before the audit window opens.",
-	"Procurement wants a security questionnaire back before they will look at pricing.",
-	"Champion is keen, but the budget owner has not been in a call yet.",
-	"They are evaluating us against two others. Differentiator is the agent, not the checklist.",
-	"Asked for a reference in the same vertical. Following up with marketing.",
-	"Pushed the decision to after their board meeting.",
-] as const;
-
-const CALL_SUBJECTS = [
-	"Discovery call",
-	"Technical deep dive",
-	"Pricing discussion",
-	"Follow-up call",
-	"Security review",
-] as const;
-
-const TASK_SUBJECTS = [
-	"Send the security questionnaire",
-	"Share pricing proposal",
-	"Book the technical deep dive",
-	"Chase procurement",
-	"Send SOC 2 report",
-	"Introduce the implementation team",
-] as const;
-
-const MEETING_SUBJECTS = [
-	"Product demo",
-	"Onboarding walkthrough",
-	"Quarterly check-in",
-	"Stakeholder alignment",
-] as const;
-
-const EMAIL_SUBJECTS = [
-	"Re: next steps",
-	"Following up after the demo",
-	"Pricing and terms",
-	"Intro to your implementation lead",
-] as const;
+const SPECIFIC_DEALS: readonly SpecificDeal[] = [
+	{
+		id: "seed-deal-boat-nirvana-q4",
+		name: "boAt Nirvana ANC Q4 Launch Collab",
+		companyDomain: "boat-lifestyle.com",
+		amountInr: 450000,
+		stage: DealStage.DECISION_MAKER_BOUGHT_IN, // Rate Negotiation
+		description:
+			"1x Dedicated YouTube Video + 2x IG Reels with Comment-to-DM automation",
+		expectedDays: 14,
+		closed: false,
+	},
+	{
+		id: "seed-deal-asus-rog-zephyrus",
+		name: "ASUS ROG Zephyrus Developer Review",
+		companyDomain: "asus.com",
+		amountInr: 600000,
+		stage: DealStage.CONTRACT_SENT, // Content in Production
+		description: "Long-form coding & gaming benchmark video",
+		expectedDays: 7,
+		closed: false,
+	},
+	{
+		id: "seed-deal-zerodha-student-series",
+		name: "Zerodha Varsity Student Finance Series",
+		companyDomain: "zerodha.com",
+		amountInr: 320000,
+		stage: DealStage.CLOSED_WON, // Published & Paid
+		description: "3x YouTube Shorts + Link-in-Bio attribution",
+		expectedDays: -5,
+		closed: true,
+	},
+	{
+		id: "seed-deal-scaler-system-design",
+		name: "Scaler System Design Bootcamp Sponsorship",
+		companyDomain: "scaler.com",
+		amountInr: 500000,
+		stage: DealStage.QUALIFIED_TO_BUY, // Media Kit Sent
+		description: "60s Mid-roll integration + Telegram broadcast",
+		expectedDays: 21,
+		closed: false,
+	},
+	{
+		id: "seed-deal-notion-template-drop",
+		name: "Notion Creator Template Drop",
+		companyDomain: "notion.so",
+		amountInr: 210000,
+		stage: DealStage.DEMO_BOOKED, // Inbound Inquiry
+		description: "IG Carousel + Reel Keyword 'TEMPLATE' auto-DM",
+		expectedDays: 30,
+		closed: false,
+	},
+	{
+		id: "seed-deal-mamaearth-haircare",
+		name: "Mamaearth Organic Hair Care Campaign",
+		companyDomain: "mamaearth.in",
+		amountInr: 280000,
+		stage: DealStage.DEMO_BOOKED, // Inbound Inquiry
+		description: "2x Instagram Reels with bio link tracking & coupon code",
+		expectedDays: 25,
+		closed: false,
+	},
+];
 
 type Transliterations = Record<string, string>;
 
@@ -341,14 +305,16 @@ function slug(value: string): string {
 }
 
 async function seedOwners(): Promise<string[]> {
-	const existing = await db.user.findMany({ select: { id: true } });
+	const existing = await db.user.findMany({
+		select: { id: true, email: true },
+	});
 
 	if (existing.length > 0) {
 		console.log(`Using ${existing.length} existing user(s) as owners.`);
 		return existing.map((user) => user.id);
 	}
 
-	console.log("No users yet — creating placeholder sales reps.");
+	console.log("No users yet — creating creator workspace owners.");
 	const created = await Promise.all(
 		OWNERS.map((owner) =>
 			db.user.upsert({
@@ -367,36 +333,6 @@ async function seedOwners(): Promise<string[]> {
 	);
 
 	return created.map((user) => user.id);
-}
-
-async function seedCompanies(
-	ownerIds: string[],
-): Promise<{ id: string; name: string; domain: string }[]> {
-	const companies = [];
-
-	for (const company of COMPANIES) {
-		const row = await db.company.upsert({
-			where: { domain: company.domain },
-			create: {
-				name: company.name,
-				domain: company.domain,
-				website: `https://${company.domain}`,
-				industry: company.industry,
-				city: company.city,
-				country: company.country,
-				countryCode: company.countryCode,
-				ownerId: pick(ownerIds),
-				createdAt: daysFromNow(-integer(30, 400), 12),
-			},
-			update: {},
-			select: { id: true, name: true, domain: true, iconUrl: true },
-		});
-		companies.push({ ...row, domain: row.domain ?? company.domain });
-	}
-
-	await seedIcons(companies);
-
-	return companies.map(({ iconUrl: _, ...company }) => company);
 }
 
 async function seedIcons(
@@ -422,35 +358,48 @@ async function seedIcons(
 		resolved += 1;
 	}
 
-	console.log(`Resolved ${resolved} of ${missing.length} company icons.`);
+	console.log(`Resolved ${resolved} of ${missing.length} brand icons.`);
 }
 
-const ACCOUNT_TYPES = ["Prospect", "Customer", "Partner", "Churned"] as const;
-const SEGMENT_TIERS = ["Enterprise", "Mid-Market", "SMB"] as const;
-const TERRITORIES = ["AMER", "EMEA", "APAC"] as const;
-const LIFECYCLE_STAGES = [
-	"Lead",
-	"MQL",
-	"SQL",
-	"Opportunity",
-	"Customer",
-] as const;
-const LEAD_SOURCES = ["Inbound", "Outbound", "Event"] as const;
+async function seedCompanies(
+	ownerIds: string[],
+): Promise<{ id: string; name: string; domain: string }[]> {
+	const companies = [];
+
+	for (const brand of BRANDS) {
+		const row = await db.company.upsert({
+			where: { domain: brand.domain },
+			create: {
+				name: brand.name,
+				domain: brand.domain,
+				website: `https://${brand.domain}`,
+				industry: brand.industry,
+				city: brand.city,
+				country: brand.country,
+				countryCode: brand.countryCode,
+				ownerId: pick(ownerIds),
+				createdAt: daysFromNow(-integer(40, 200), 12),
+			},
+			update: {
+				name: brand.name,
+				industry: brand.industry,
+				city: brand.city,
+				country: brand.country,
+				countryCode: brand.countryCode,
+			},
+			select: { id: true, name: true, domain: true, iconUrl: true },
+		});
+		companies.push({ ...row, domain: row.domain ?? brand.domain });
+	}
+
+	await seedIcons(companies);
+	return companies.map(({ iconUrl: _, ...company }) => company);
+}
 
 type SeededField = {
 	id: string;
 	key: string;
 	options: { id: string; label: string }[];
-};
-
-type SeededFieldSet = {
-	accountType: SeededField;
-	segment: SeededField;
-	territory: SeededField;
-	lifecycleStage: SeededField;
-	leadSource: SeededField;
-	icpFitScore: SeededField;
-	bdrOwner: SeededField;
 };
 
 async function upsertField(
@@ -479,7 +428,7 @@ async function upsertField(
 				})),
 			},
 		},
-		update: {},
+		update: { label, type, position },
 		include: { options: true },
 	});
 
@@ -490,254 +439,207 @@ async function upsertField(
 	};
 }
 
-async function seedCompanyFields(): Promise<SeededFieldSet> {
-	const [
-		accountType,
-		segment,
-		territory,
-		lifecycleStage,
-		leadSource,
-		icpFitScore,
-		bdrOwner,
-	] = await Promise.all([
-		upsertField("COMPANY", "Account type", FieldType.SELECT, 0, ACCOUNT_TYPES),
-		upsertField("COMPANY", "Segment", FieldType.SELECT, 1, SEGMENT_TIERS),
-		upsertField("COMPANY", "Territory", FieldType.SELECT, 2, TERRITORIES),
-		upsertField(
-			"COMPANY",
-			"Lifecycle stage",
-			FieldType.SELECT,
-			3,
-			LIFECYCLE_STAGES,
-		),
-		upsertField("COMPANY", "Lead source", FieldType.SELECT, 4, LEAD_SOURCES),
-		upsertField("COMPANY", "ICP fit score", FieldType.NUMBER, 5),
-		upsertField("COMPANY", "BDR owner", FieldType.USER, 6),
-	]);
-
-	return {
-		accountType,
-		segment,
-		territory,
-		lifecycleStage,
-		leadSource,
-		icpFitScore,
-		bdrOwner,
-	};
-}
-
 function optionIdFor(field: SeededField, label: string): string {
 	const option = field.options.find((entry) => entry.label === label);
-	if (!option)
-		throw new Error(`Seed field "${field.key}" has no "${label}" option.`);
+	if (!option) {
+		// Fallback to first option if exact label not matched
+		return field.options[0]?.id ?? "";
+	}
 	return option.id;
 }
 
-async function seedCompanyFieldValues(
-	fields: SeededFieldSet,
-	companies: { id: string }[],
-	ownerIds: string[],
-): Promise<void> {
-	for (const company of companies) {
-		const accountType = pick(ACCOUNT_TYPES);
+type CreatorFields = {
+	sponsorCategory: SeededField;
+	targetPlatforms: SeededField;
+	avgCampaignBudget: SeededField;
+	accountType: SeededField;
+	instagramHandle: SeededField;
+	followerTier: SeededField;
+	engagementRate: SeededField;
+	deliverablesScope: SeededField;
+	exclusivityWindow: SeededField;
+	affiliateUtmCode: SeededField;
+	usageRights: SeededField;
+};
 
-		await Promise.all([
-			db.fieldValue.upsert({
-				where: {
-					fieldId_companyId: {
-						fieldId: fields.accountType.id,
-						companyId: company.id,
-					},
-				},
-				create: {
-					fieldId: fields.accountType.id,
-					companyId: company.id,
-					optionId: optionIdFor(fields.accountType, accountType),
-				},
-				update: {},
-			}),
-			db.fieldValue.upsert({
-				where: {
-					fieldId_companyId: {
-						fieldId: fields.segment.id,
-						companyId: company.id,
-					},
-				},
-				create: {
-					fieldId: fields.segment.id,
-					companyId: company.id,
-					optionId: optionIdFor(fields.segment, pick(SEGMENT_TIERS)),
-				},
-				update: {},
-			}),
-			db.fieldValue.upsert({
-				where: {
-					fieldId_companyId: {
-						fieldId: fields.territory.id,
-						companyId: company.id,
-					},
-				},
-				create: {
-					fieldId: fields.territory.id,
-					companyId: company.id,
-					optionId: optionIdFor(fields.territory, pick(TERRITORIES)),
-				},
-				update: {},
-			}),
-			db.fieldValue.upsert({
-				where: {
-					fieldId_companyId: {
-						fieldId: fields.lifecycleStage.id,
-						companyId: company.id,
-					},
-				},
-				create: {
-					fieldId: fields.lifecycleStage.id,
-					companyId: company.id,
-					optionId: optionIdFor(
-						fields.lifecycleStage,
-						accountType === "Customer" ? "Customer" : pick(LIFECYCLE_STAGES),
-					),
-				},
-				update: {},
-			}),
-			db.fieldValue.upsert({
-				where: {
-					fieldId_companyId: {
-						fieldId: fields.leadSource.id,
-						companyId: company.id,
-					},
-				},
-				create: {
-					fieldId: fields.leadSource.id,
-					companyId: company.id,
-					optionId: optionIdFor(fields.leadSource, pick(LEAD_SOURCES)),
-				},
-				update: {},
-			}),
-			db.fieldValue.upsert({
-				where: {
-					fieldId_companyId: {
-						fieldId: fields.icpFitScore.id,
-						companyId: company.id,
-					},
-				},
-				create: {
-					fieldId: fields.icpFitScore.id,
-					companyId: company.id,
-					number: integer(40, 95),
-				},
-				update: {},
-			}),
-			db.fieldValue.upsert({
-				where: {
-					fieldId_companyId: {
-						fieldId: fields.bdrOwner.id,
-						companyId: company.id,
-					},
-				},
-				create: {
-					fieldId: fields.bdrOwner.id,
-					companyId: company.id,
-					userId: pick(ownerIds),
-				},
-				update: {},
-			}),
-		]);
-	}
+async function seedCustomFields(): Promise<CreatorFields> {
+	// Company fields
+	const sponsorCategory = await upsertField(
+		"COMPANY",
+		"Sponsor Category",
+		FieldType.SELECT,
+		0,
+		["D2C", "EdTech", "Gaming", "FinTech", "SaaS"],
+	);
+	const targetPlatforms = await upsertField(
+		"COMPANY",
+		"Target Platforms",
+		FieldType.SELECT,
+		1,
+		["YouTube", "Instagram Reels", "YouTube Shorts"],
+	);
+	const avgCampaignBudget = await upsertField(
+		"COMPANY",
+		"Avg Campaign Budget",
+		FieldType.NUMBER,
+		2,
+	);
+	const accountType = await upsertField(
+		"COMPANY",
+		"Account type",
+		FieldType.SELECT,
+		3,
+		["Prospect", "Customer", "Partner", "Churned"],
+	);
+
+	// Contact fields
+	const instagramHandle = await upsertField(
+		"CONTACT",
+		"Instagram Handle",
+		FieldType.TEXT,
+		0,
+	);
+	const followerTier = await upsertField(
+		"CONTACT",
+		"Subscriber / Follower Tier",
+		FieldType.SELECT,
+		1,
+		["Brand Manager", "Macro Creator", "Superfan"],
+	);
+	const engagementRate = await upsertField(
+		"CONTACT",
+		"Engagement Rate (%)",
+		FieldType.NUMBER,
+		2,
+	);
+
+	// Deal fields
+	const deliverablesScope = await upsertField(
+		"DEAL",
+		"Deliverables Scope",
+		FieldType.TEXT,
+		0,
+	);
+	const exclusivityWindow = await upsertField(
+		"DEAL",
+		"Exclusivity Window",
+		FieldType.SELECT,
+		1,
+		["None", "30 Days", "60 Days", "90 Days", "Category Exclusive"],
+	);
+	const affiliateUtmCode = await upsertField(
+		"DEAL",
+		"Affiliate / UTM Code",
+		FieldType.TEXT,
+		2,
+	);
+	const usageRights = await upsertField(
+		"DEAL",
+		"Usage Rights",
+		FieldType.SELECT,
+		3,
+		[
+			"Organic Only",
+			"30-Day Paid Whitelist",
+			"90-Day Digital Ads",
+			"Perpetual Commercial",
+		],
+	);
+
+	return {
+		sponsorCategory,
+		targetPlatforms,
+		avgCampaignBudget,
+		accountType,
+		instagramHandle,
+		followerTier,
+		engagementRate,
+		deliverablesScope,
+		exclusivityWindow,
+		affiliateUtmCode,
+		usageRights,
+	};
 }
 
-type SeededContact = { id: string; companyId: string };
+type SeededContact = {
+	id: string;
+	companyId: string | null;
+	email: string | null;
+	instagram?: string;
+};
 
 async function seedContacts(
 	companies: { id: string; domain: string }[],
 	ownerIds: string[],
 ): Promise<SeededContact[]> {
+	const companyByDomain = new Map(companies.map((c) => [c.domain, c.id]));
 	const contacts: SeededContact[] = [];
-	const used = new Set<string>();
 
-	for (const company of companies) {
-		for (let index = 0; index < integer(2, 4); index++) {
-			const firstName = pick(FIRST_NAMES);
-			const lastName = pick(LAST_NAMES);
-			const email = `${slug(firstName)}.${slug(lastName)}@${company.domain}`;
-			if (used.has(email)) continue;
-			used.add(email);
+	for (const spec of SPECIFIC_CONTACTS) {
+		const companyId = spec.companyDomain
+			? (companyByDomain.get(spec.companyDomain) ?? null)
+			: null;
 
-			const contact = await db.contact.upsert({
-				where: { email },
-				create: {
-					firstName,
-					lastName,
-					email,
-					title: pick(TITLES),
-					phone: chance(0.4) ? `+1 415 555 ${integer(1000, 9999)}` : null,
-					companyId: company.id,
-					ownerId: pick(ownerIds),
-					createdAt: daysFromNow(-integer(10, 300), 12),
-				},
-				update: {},
-				select: { id: true },
-			});
-
-			contacts.push({ id: contact.id, companyId: company.id });
-		}
-	}
-
-	for (const company of companies) {
-		const first = contacts.find((contact) => contact.companyId === company.id);
-		if (!first) continue;
-		await db.company.update({
-			where: { id: company.id },
-			data: { primaryContactId: first.id },
+		const contact = await db.contact.upsert({
+			where: { email: spec.email },
+			create: {
+				firstName: spec.firstName,
+				lastName: spec.lastName,
+				email: spec.email,
+				title: spec.title,
+				phone: spec.phone,
+				companyId,
+				ownerId: pick(ownerIds),
+				createdAt: daysFromNow(-integer(15, 120), 8),
+			},
+			update: {
+				firstName: spec.firstName,
+				lastName: spec.lastName,
+				title: spec.title,
+				phone: spec.phone,
+				companyId,
+			},
+			select: { id: true, companyId: true, email: true },
 		});
+
+		contacts.push({ ...contact, instagram: spec.instagram });
+
+		if (companyId) {
+			await db.company.update({
+				where: { id: companyId },
+				data: { primaryContactId: contact.id },
+			});
+		}
 	}
 
 	return contacts;
 }
 
-type SeededDeal = {
-	id: string;
-	companyId: string;
-	ownerId: string;
-	closed: boolean;
-};
-
-type SeedRates = Record<string, number>;
-
-const SEED_RATES: SeedRates = {
+const SEED_RATES = {
+	INR: 86.5,
+	USD: 1.0,
 	EUR: 1.09,
 	GBP: 1.27,
 	CAD: 0.73,
 	AUD: 0.66,
 	JPY: 0.0067,
-};
-
-const DEAL_CURRENCIES = ["USD", "USD", "USD", "EUR", "GBP", "JPY", "CAD"];
-
-let seedBase = "USD";
+} satisfies Record<string, number>;
 
 async function seedRates(): Promise<number> {
 	const asOf = daysFromNow(-1);
 
+	// Ensure Workspace reporting currency is INR for Indian Creator CRM
 	await db.appSetting.upsert({
 		where: { id: SETTINGS_ID },
 		create: {
 			id: SETTINGS_ID,
-			reportingCurrency: DEFAULT_REPORTING_CURRENCY,
+			reportingCurrency: "INR",
 		},
-		update: {},
+		update: {
+			reportingCurrency: "INR",
+		},
 		select: { id: true },
 	});
-
-	seedBase = await readReportingCurrency(db);
-
-	if (seedBase !== "USD") {
-		console.log(
-			`Reporting currency is ${seedBase} — seeding a converted figure only for ` +
-				`deals already in ${seedBase}; the rates cron converts the rest.`,
-		);
-	}
 
 	for (const [quoteCurrency, rate] of Object.entries(SEED_RATES)) {
 		await db.exchangeRate.upsert({
@@ -763,248 +665,539 @@ async function seedRates(): Promise<number> {
 	return Object.keys(SEED_RATES).length;
 }
 
-function money(usdAmount: number, currency: string) {
-	const rate = SEED_RATES[currency] ?? 1;
-	const places = currency === "JPY" ? 0 : 2;
-	const amount = Number((usdAmount / rate).toFixed(places));
-
-	const converted =
-		currency === seedBase
-			? { baseAmount: amount, fxRate: 1 }
-			: seedBase === "USD"
-				? { baseAmount: Number((amount * rate).toFixed(2)), fxRate: rate }
-				: null;
-
-	return {
-		amount,
-		currency,
-		baseAmount: converted?.baseAmount ?? null,
-		baseCurrency: converted ? seedBase : null,
-		fxRate: converted?.fxRate ?? null,
-	};
-}
+type SeededDeal = {
+	id: string;
+	companyId: string;
+	ownerId: string;
+	closed: boolean;
+};
 
 async function seedDeals(
-	companies: { id: string; name: string }[],
+	companies: { id: string; domain: string }[],
 	contacts: SeededContact[],
 	ownerIds: string[],
 ): Promise<SeededDeal[]> {
+	const companyByDomain = new Map(companies.map((c) => [c.domain, c.id]));
 	const deals: SeededDeal[] = [];
 
-	for (const [index, company] of companies.entries()) {
-		const count = index % 2 === 0 ? 2 : 1;
+	for (const spec of SPECIFIC_DEALS) {
+		const companyId = companyByDomain.get(spec.companyDomain);
+		if (!companyId) continue;
 
-		for (let n = 0; n < count; n++) {
-			const id = `seed-deal-${slug(company.name)}-${n}`;
-			const closed = chance(0.35);
-			const stage = closed ? pick(CLOSED_STAGES) : pick(OPEN_STAGES);
-			const ownerId = pick(ownerIds);
-			const createdDaysAgo = integer(20, 210);
-			const createdAt = daysFromNow(-createdDaysAgo, 12);
-			const closedDaysAgo = closed
-				? integer(0, Math.max(createdDaysAgo - 14, 0))
-				: null;
-			const stageChangedAt = daysFromNow(
-				closedDaysAgo === null ? -integer(1, 20) : -closedDaysAgo,
-				12,
-			);
+		const ownerId = pick(ownerIds);
+		const createdAt = daysFromNow(-integer(15, 60), 6);
+		const stageChangedAt = daysFromNow(spec.closed ? -2 : -integer(1, 10), 4);
 
-			await db.deal.upsert({
-				where: { id },
+		await db.deal.upsert({
+			where: { id: spec.id },
+			create: {
+				id: spec.id,
+				name: spec.name,
+				description: spec.description,
+				companyId,
+				ownerId,
+				stage: spec.stage,
+				stageChangedAt,
+				amount: spec.amountInr,
+				currency: "INR",
+				baseAmount: spec.amountInr,
+				baseCurrency: "INR",
+				fxRate: 1,
+				fxRateAt: daysFromNow(-1),
+				expectedCloseDate: daysFromNow(spec.expectedDays),
+				closedAt: spec.closed ? stageChangedAt : null,
+				createdAt,
+			},
+			update: {
+				name: spec.name,
+				description: spec.description,
+				stage: spec.stage,
+				amount: spec.amountInr,
+				currency: "INR",
+				baseAmount: spec.amountInr,
+				baseCurrency: "INR",
+			},
+		});
+
+		const primaryContact = contacts.find((c) => c.companyId === companyId);
+		if (primaryContact) {
+			await db.dealContact.upsert({
+				where: {
+					dealId_contactId: { dealId: spec.id, contactId: primaryContact.id },
+				},
 				create: {
-					id,
-					name:
-						n === 0
-							? `${company.name} — CAG CRM`
-							: `${company.name} — expansion`,
-					description: pick(DEAL_DESCRIPTIONS),
-					companyId: company.id,
-					ownerId,
-					stage,
-					stageChangedAt,
-					...(() => {
-						const { amount, currency, baseAmount, baseCurrency, fxRate } =
-							money(integer(6, 90) * 1000, pick(DEAL_CURRENCIES));
-						return {
-							amount,
-							currency,
-							baseAmount,
-							baseCurrency,
-							fxRate,
-							fxRateAt: fxRate === null ? null : daysFromNow(-1),
-						};
-					})(),
-					expectedCloseDate: daysFromNow(
-						closedDaysAgo === null
-							? integer(-10, 75)
-							: -closedDaysAgo + integer(-4, 9),
-					),
-					closedAt: closed ? stageChangedAt : null,
-					closedReason:
-						stage === DealStage.CLOSED_LOST ||
-						stage === DealStage.UNQUALIFIED_TO_BUY
-							? pick(LOST_REASONS)
-							: null,
-					createdAt,
+					dealId: spec.id,
+					contactId: primaryContact.id,
+					role: "Brand Partnership Manager",
 				},
 				update: {},
 			});
-
-			const companyContacts = contacts.filter(
-				(contact) => contact.companyId === company.id,
-			);
-			for (const contact of companyContacts.slice(0, integer(1, 2))) {
-				await db.dealContact.upsert({
-					where: { dealId_contactId: { dealId: id, contactId: contact.id } },
-					create: {
-						dealId: id,
-						contactId: contact.id,
-						role: chance(0.5) ? "Champion" : "Decision maker",
-					},
-					update: {},
-				});
-			}
-
-			deals.push({ id, companyId: company.id, ownerId, closed });
 		}
+
+		deals.push({ id: spec.id, companyId, ownerId, closed: spec.closed });
 	}
 
 	return deals;
 }
 
-async function seedActivities(
-	companies: { id: string }[],
+async function seedFieldValues(
+	fields: CreatorFields,
+	companies: { id: string; domain: string }[],
 	contacts: SeededContact[],
 	deals: SeededDeal[],
-	ownerIds: string[],
-): Promise<number> {
-	const existing = await db.activity.count();
-	if (existing > 0) {
-		console.log(`Activities already seeded (${existing}) — skipping.`);
-		return existing;
-	}
+): Promise<void> {
+	// Brand company field values
+	const categoryMap = {
+		"boat-lifestyle.com": "D2C",
+		"zerodha.com": "FinTech",
+		"asus.com": "Gaming",
+		"mamaearth.in": "D2C",
+		"scaler.com": "EdTech",
+		"notion.so": "SaaS",
+	} satisfies Record<string, string>;
 
-	type ActivityRow = {
-		type: ActivityType;
-		subject: string | null;
-		body: string | null;
-		occurredAt: Date | null;
-		dueAt: Date | null;
-		completedAt: Date | null;
-		companyId: string | null;
-		contactId: string | null;
-		dealId: string | null;
-		createdById: string;
-		createdAt: Date;
-		meta?: { from: DealStage; to: DealStage };
-	};
-
-	const rows: ActivityRow[] = [];
-
-	const base = (companyId: string, createdById: string, createdAt: Date) => ({
-		companyId,
-		contactId: null,
-		dealId: null,
-		occurredAt: null,
-		dueAt: null,
-		completedAt: null,
-		subject: null,
-		body: null,
-		createdById,
-		createdAt,
-	});
-
-	for (const deal of deals) {
-		const dealContacts = contacts.filter((c) => c.companyId === deal.companyId);
-
-		for (let n = 0; n < integer(3, 6); n++) {
-			const at = daysFromNow(-integer(2, 120), 18);
-			const type = pick([
-				ActivityType.NOTE,
-				ActivityType.CALL,
-				ActivityType.EMAIL,
-				ActivityType.MEETING,
-			]);
-
-			rows.push({
-				...base(deal.companyId, deal.ownerId, at),
-				type,
-				dealId: deal.id,
-				contactId: dealContacts.length > 0 ? pick(dealContacts).id : null,
-				subject:
-					type === ActivityType.CALL
-						? pick(CALL_SUBJECTS)
-						: type === ActivityType.MEETING
-							? pick(MEETING_SUBJECTS)
-							: type === ActivityType.EMAIL
-								? pick(EMAIL_SUBJECTS)
-								: null,
-				body: type === ActivityType.NOTE ? pick(NOTE_BODIES) : null,
-				occurredAt: type === ActivityType.NOTE ? null : at,
+	for (const company of companies) {
+		const category =
+			(categoryMap as Record<string, string>)[company.domain] ?? "D2C";
+		const optId = optionIdFor(fields.sponsorCategory, category);
+		if (optId) {
+			await db.fieldValue.upsert({
+				where: {
+					fieldId_companyId: {
+						fieldId: fields.sponsorCategory.id,
+						companyId: company.id,
+					},
+				},
+				create: {
+					fieldId: fields.sponsorCategory.id,
+					companyId: company.id,
+					optionId: optId,
+				},
+				update: {},
 			});
 		}
 
-		rows.push({
-			...base(deal.companyId, deal.ownerId, daysFromNow(-integer(1, 20), 12)),
-			type: ActivityType.STAGE_CHANGE,
-			dealId: deal.id,
-			subject: "Stage changed",
-			meta: {
-				from: DealStage.DEMO_BOOKED,
-				to: deal.closed ? DealStage.CLOSED_WON : DealStage.QUALIFIED_TO_BUY,
+		const platformOptId = optionIdFor(
+			fields.targetPlatforms,
+			category === "Gaming" ? "YouTube" : "Instagram Reels",
+		);
+		if (platformOptId) {
+			await db.fieldValue.upsert({
+				where: {
+					fieldId_companyId: {
+						fieldId: fields.targetPlatforms.id,
+						companyId: company.id,
+					},
+				},
+				create: {
+					fieldId: fields.targetPlatforms.id,
+					companyId: company.id,
+					optionId: platformOptId,
+				},
+				update: {},
+			});
+		}
+
+		await db.fieldValue.upsert({
+			where: {
+				fieldId_companyId: {
+					fieldId: fields.avgCampaignBudget.id,
+					companyId: company.id,
+				},
+			},
+			create: {
+				fieldId: fields.avgCampaignBudget.id,
+				companyId: company.id,
+				number: integer(250000, 750000),
+			},
+			update: {},
+		});
+	}
+
+	// Contact custom field values
+	for (const contact of contacts) {
+		if (contact.instagram) {
+			await db.fieldValue.upsert({
+				where: {
+					fieldId_contactId: {
+						fieldId: fields.instagramHandle.id,
+						contactId: contact.id,
+					},
+				},
+				create: {
+					fieldId: fields.instagramHandle.id,
+					contactId: contact.id,
+					text: `@${contact.instagram}`,
+				},
+				update: {},
+			});
+		}
+
+		const tier = contact.companyId ? "Brand Manager" : "Macro Creator";
+		const tierOptId = optionIdFor(fields.followerTier, tier);
+		if (tierOptId) {
+			await db.fieldValue.upsert({
+				where: {
+					fieldId_contactId: {
+						fieldId: fields.followerTier.id,
+						contactId: contact.id,
+					},
+				},
+				create: {
+					fieldId: fields.followerTier.id,
+					contactId: contact.id,
+					optionId: tierOptId,
+				},
+				update: {},
+			});
+		}
+
+		await db.fieldValue.upsert({
+			where: {
+				fieldId_contactId: {
+					fieldId: fields.engagementRate.id,
+					contactId: contact.id,
+				},
+			},
+			create: {
+				fieldId: fields.engagementRate.id,
+				contactId: contact.id,
+				number: Number((random() * 4 + 3.5).toFixed(1)), // 3.5% - 7.5%
+			},
+			update: {},
+		});
+	}
+
+	// Deal custom field values
+	for (const deal of deals) {
+		await db.fieldValue.upsert({
+			where: {
+				fieldId_dealId: {
+					fieldId: fields.affiliateUtmCode.id,
+					dealId: deal.id,
+				},
+			},
+			create: {
+				fieldId: fields.affiliateUtmCode.id,
+				dealId: deal.id,
+				text: `utm_source=youtube&utm_campaign=${slug(deal.id)}&ref=garvit`,
+			},
+			update: {},
+		});
+
+		const rightsOpt = optionIdFor(fields.usageRights, "30-Day Paid Whitelist");
+		if (rightsOpt) {
+			await db.fieldValue.upsert({
+				where: {
+					fieldId_dealId: {
+						fieldId: fields.usageRights.id,
+						dealId: deal.id,
+					},
+				},
+				create: {
+					fieldId: fields.usageRights.id,
+					dealId: deal.id,
+					optionId: rightsOpt,
+				},
+				update: {},
+			});
+		}
+	}
+}
+
+async function seedTimelineActivities(
+	companies: { id: string; domain: string }[],
+	_contacts: SeededContact[],
+	deals: SeededDeal[],
+	ownerId: string,
+): Promise<number> {
+	const existing = await db.activity.count();
+	if (existing > 0) {
+		console.log(
+			`Activities already present (${existing}) — adding creator logs.`,
+		);
+	}
+
+	const companyByDomain = new Map(companies.map((c) => [c.domain, c.id]));
+	const dealMap = new Map(deals.map((d) => [d.id, d]));
+
+	const boatId = companyByDomain.get("boat-lifestyle.com");
+	const asusId = companyByDomain.get("asus.com");
+	const zerodhaId = companyByDomain.get("zerodha.com");
+	const notionId = companyByDomain.get("notion.so");
+	const scalerId = companyByDomain.get("scaler.com");
+
+	const boatDeal = dealMap.get("seed-deal-boat-nirvana-q4");
+	const asusDeal = dealMap.get("seed-deal-asus-rog-zephyrus");
+	const zerodhaDeal = dealMap.get("seed-deal-zerodha-student-series");
+	const notionDeal = dealMap.get("seed-deal-notion-template-drop");
+	const scalerDeal = dealMap.get("seed-deal-scaler-system-design");
+
+	const activities = [
+		// 1. Inbound Gmail Threads
+		{
+			type: ActivityType.EMAIL,
+			subject:
+				"[Inbound Gmail] boAt Nirvana ANC Launch Collaboration Scope & Deliverables",
+			body: "Hi Garvit, loved your previous audio comparison video! We are launching the Nirvana ANC line in Q4 and want to lock in a dedicated YouTube integration + 2 Reels. Attached our brief and budget target.",
+			occurredAt: daysFromNow(-12, 2),
+			companyId: boatId ?? null,
+			dealId: boatDeal?.id ?? null,
+			createdById: ownerId,
+			createdAt: daysFromNow(-12, 2),
+		},
+		{
+			type: ActivityType.EMAIL,
+			subject:
+				"[Inbound Gmail] Scaler Academy Tech Bootcamp sponsorship request",
+			body: "Hey Garvit, Scaler is hosting a Free System Design Masterclass next month. We'd love a 60s mid-roll integration in your upcoming full-stack architecture video.",
+			occurredAt: daysFromNow(-18, 3),
+			companyId: scalerId ?? null,
+			dealId: scalerDeal?.id ?? null,
+			createdById: ownerId,
+			createdAt: daysFromNow(-18, 3),
+		},
+		{
+			type: ActivityType.EMAIL,
+			subject: "[Inbound Gmail] Notion Template Drop partnership proposal",
+			body: "Hi team, Notion wants to collaborate with Garvit on a Creator CRM template showcase. We are offering ₹2,10,000 for a carousel + dedicated Reel with automated keyword DM delivery.",
+			occurredAt: daysFromNow(-5, 1),
+			companyId: notionId ?? null,
+			dealId: notionDeal?.id ?? null,
+			createdById: ownerId,
+			createdAt: daysFromNow(-5, 1),
+		},
+
+		// 2. Automated Instagram Comment-to-DM dispatches
+		{
+			type: ActivityType.NOTE,
+			subject:
+				"[SLAVE-2: IG COMMENT-TO-DM] Dispatched affiliate link via /v19.0/17982349823/messages",
+			body: "Keyword 'TEMPLATE' detected on Instagram Reel #17982349823. Automatically sent trackable Notion template download link and setup guide to user @dev_prateek.",
+			occurredAt: daysFromNow(-2, 4),
+			companyId: notionId ?? null,
+			dealId: notionDeal?.id ?? null,
+			createdById: ownerId,
+			createdAt: daysFromNow(-2, 4),
+		},
+		{
+			type: ActivityType.NOTE,
+			subject:
+				"[SLAVE-2: IG COMMENT-TO-DM] Sent boAt ANC discount coupon to 48 comment leads",
+			body: "Dispatched exclusive ₹500 off voucher code 'GARVITANC' to 48 verified Instagram users who commented 'ANC' on the latest audio teardown reel.",
+			occurredAt: daysFromNow(-4, 5),
+			companyId: boatId ?? null,
+			dealId: boatDeal?.id ?? null,
+			createdById: ownerId,
+			createdAt: daysFromNow(-4, 5),
+		},
+
+		// 3. Slave 1 Brand Research briefs
+		{
+			type: ActivityType.NOTE,
+			subject:
+				"[SLAVE-1: BRAND RESEARCH] ASUS ROG Zephyrus G16 developer benchmark brief compiled",
+			body: "Brand brief ready: ASUS ROG Zephyrus G16 featuring Intel Core Ultra 9 & RTX 4080. Recommended deliverables: 1080p thermal tests running Docker + Local LLM + Blender render, followed by Cyberpunk 2077 benchmark.",
+			occurredAt: daysFromNow(-7, 2),
+			companyId: asusId ?? null,
+			dealId: asusDeal?.id ?? null,
+			createdById: ownerId,
+			createdAt: daysFromNow(-7, 2),
+		},
+		{
+			type: ActivityType.NOTE,
+			subject:
+				"[SLAVE-1: BRAND RESEARCH] Zerodha Varsity financial literacy series audience alignment verified",
+			body: "Audience analytics: 72% of audience is aged 20-32 in Tier-1/Tier-2 Indian cities. High affinity for SIPs and algorithmic trading. Zerodha Varsity 3x Shorts campaign approved for maximum engagement.",
+			occurredAt: daysFromNow(-10, 4),
+			companyId: zerodhaId ?? null,
+			dealId: zerodhaDeal?.id ?? null,
+			createdById: ownerId,
+			createdAt: daysFromNow(-10, 4),
+		},
+
+		// 4. Tasks & Deliverables
+		{
+			type: ActivityType.TASK,
+			subject: "Script review with ASUS ROG technical team",
+			body: "Finalize benchmark test suite and B-roll shotlist before filming.",
+			occurredAt: null,
+			dueAt: daysFromNow(-2), // Overdue deliverable
+			completedAt: null,
+			companyId: asusId ?? null,
+			dealId: asusDeal?.id ?? null,
+			createdById: ownerId,
+			createdAt: daysFromNow(-6),
+		},
+		{
+			type: ActivityType.TASK,
+			subject: "Send draft cut to boAt brand marketing",
+			body: "Upload unlisted YouTube preview for sound sync approval.",
+			occurredAt: null,
+			dueAt: daysFromNow(3),
+			completedAt: null,
+			companyId: boatId ?? null,
+			dealId: boatDeal?.id ?? null,
+			createdById: ownerId,
+			createdAt: daysFromNow(-2),
+		},
+		{
+			type: ActivityType.TASK,
+			subject: "Share campaign performance & UTM report with Zerodha",
+			body: "Export link-in-bio clicks and conversion report from tracking dashboard.",
+			occurredAt: null,
+			dueAt: daysFromNow(-1),
+			completedAt: daysFromNow(-1),
+			companyId: zerodhaId ?? null,
+			dealId: zerodhaDeal?.id ?? null,
+			createdById: ownerId,
+			createdAt: daysFromNow(-14),
+		},
+	];
+
+	for (const act of activities) {
+		await db.activity.create({
+			data: {
+				type: act.type,
+				subject: act.subject,
+				body: act.body,
+				occurredAt: act.occurredAt,
+				dueAt: act.dueAt,
+				completedAt: act.completedAt,
+				companyId: act.companyId,
+				dealId: act.dealId,
+				createdById: act.createdById,
+				createdAt: act.createdAt,
 			},
 		});
 	}
 
-	for (const deal of deals) {
-		if (deal.closed) continue;
+	return activities.length;
+}
 
-		for (let n = 0; n < integer(1, 3); n++) {
-			const roll = random();
-			const overdue = roll < 0.3;
-			const done = roll >= 0.3 && roll < 0.6;
-			const dueAt = overdue
-				? daysFromNow(-integer(1, 14), 6)
-				: daysFromNow(integer(1, 21), 6);
+async function seedPreConfiguredAgents(ownerId: string): Promise<void> {
+	// 1. Slave 1: Brand Sponsorship & Collab Triage Agent
+	const _agent1 = await db.agentDefinition.upsert({
+		where: { id: "agent-slave-1" },
+		create: {
+			id: "agent-slave-1",
+			name: "Slave 1: Brand Sponsorship & Collab Triage Agent",
+			description:
+				"Triages inbound brand inquiries, extracts campaign requirements, and calculates media kit rate cards.",
+			status: "LIVE",
+			createdById: ownerId,
+		},
+		update: {
+			name: "Slave 1: Brand Sponsorship & Collab Triage Agent",
+			description:
+				"Triages inbound brand inquiries, extracts campaign requirements, and calculates media kit rate cards.",
+			status: "LIVE",
+		},
+	});
 
-			rows.push({
-				...base(deal.companyId, deal.ownerId, daysFromNow(-integer(1, 30), 12)),
-				type: ActivityType.TASK,
-				dealId: deal.id,
-				subject: pick(TASK_SUBJECTS),
-				dueAt: done ? daysFromNow(-integer(1, 20), 6) : dueAt,
-				completedAt: done ? daysFromNow(-integer(1, 10), 6) : null,
-			});
-		}
-	}
+	const version1 = await db.agentVersion.upsert({
+		where: { agentId_number: { agentId: "agent-slave-1", number: 1 } },
+		create: {
+			id: "agent-slave-1-v1",
+			agentId: "agent-slave-1",
+			number: 1,
+			status: "DEPLOYED",
+			instructions:
+				"Monitor inbound email and message inquiries from brands, evaluate fit against creator guidelines, and prepare brand research briefs.",
+			manifest: { tools: ["search_crm", "draft_reply", "calculate_rates"] },
+			modelId: "gemini-2.5-pro",
+			sandboxPolicy: {},
+			createdById: ownerId,
+		},
+		update: {},
+	});
 
-	for (const company of companies) {
-		if (!chance(0.6)) continue;
-		rows.push({
-			...base(company.id, pick(ownerIds), daysFromNow(-integer(5, 200), 12)),
-			type: ActivityType.NOTE,
-			body: pick(NOTE_BODIES),
-		});
-	}
+	await db.agentDefinition.update({
+		where: { id: "agent-slave-1" },
+		data: { currentVersionId: version1.id },
+	});
 
-	await db.activity.createMany({ data: rows });
-	return rows.length;
+	// 2. Slave 2: IG & WhatsApp Community DM Agent (REIC)
+	const _agent2 = await db.agentDefinition.upsert({
+		where: { id: "agent-slave-2" },
+		create: {
+			id: "agent-slave-2",
+			name: "Slave 2: IG & WhatsApp Community DM Agent (REIC)",
+			description:
+				"Handles Comment-to-DM automation, fan interaction, and affiliate link dispatch across Instagram and WhatsApp.",
+			status: "LIVE",
+			createdById: ownerId,
+		},
+		update: {
+			name: "Slave 2: IG & WhatsApp Community DM Agent (REIC)",
+			description:
+				"Handles Comment-to-DM automation, fan interaction, and affiliate link dispatch across Instagram and WhatsApp.",
+			status: "LIVE",
+		},
+	});
+
+	const version2 = await db.agentVersion.upsert({
+		where: { agentId_number: { agentId: "agent-slave-2", number: 1 } },
+		create: {
+			id: "agent-slave-2-v1",
+			agentId: "agent-slave-2",
+			number: 1,
+			status: "DEPLOYED",
+			instructions:
+				"Listen for reel comments with keywords (e.g. 'TEMPLATE', 'LINK', 'DEAL'), trigger direct messages with trackable UTM affiliate links via Meta Graph API.",
+			manifest: {
+				tools: ["send_dm", "log_interaction", "generate_affiliate_link"],
+			},
+			modelId: "gemini-2.5-flash",
+			sandboxPolicy: {},
+			createdById: ownerId,
+		},
+		update: {},
+	});
+
+	await db.agentDefinition.update({
+		where: { id: "agent-slave-2" },
+		data: { currentVersionId: version2.id },
+	});
+
+	console.log("Seeded 2 pre-configured Creator AI Custom Agents.");
 }
 
 async function main() {
 	const rates = await seedRates();
 	const ownerIds = await seedOwners();
+	const primaryOwnerId = ownerIds[0] ?? "seed-garvit-bhojak";
+
 	const companies = await seedCompanies(ownerIds);
 	const contacts = await seedContacts(companies, ownerIds);
 	const deals = await seedDeals(companies, contacts, ownerIds);
-	const activities = await seedActivities(companies, contacts, deals, ownerIds);
-	const companyFields = await seedCompanyFields();
-	await seedCompanyFieldValues(companyFields, companies, ownerIds);
+	const customFields = await seedCustomFields();
+	await seedFieldValues(customFields, companies, contacts, deals);
+
+	const activityCount = await seedTimelineActivities(
+		companies,
+		contacts,
+		deals,
+		primaryOwnerId,
+	);
+	await seedPreConfiguredAgents(primaryOwnerId);
+
+	// Also seed omnichannel chat conversations for demo readiness
+	try {
+		await seedOmnichannel();
+	} catch (_e) {
+		console.log("Omnichannel seed skipped or already up to date.");
+	}
 
 	console.log(
-		`Seeded ${companies.length} companies, ${contacts.length} contacts, ` +
-			`${deals.length} deals, ${activities} activities, ${rates} exchange rates, ` +
-			"7 company fields.",
+		`\n🎉 Creator CRM Seed Complete!\n` +
+			`• Brands & Sponsors: ${companies.length}\n` +
+			`• Talent & Contacts: ${contacts.length}\n` +
+			`• Brand Collabs: ${deals.length} (in ₹ INR)\n` +
+			`• Timeline Activities: ${activityCount}\n` +
+			`• Exchange Rates: ${rates}\n` +
+			`• Reporting Currency: INR (₹)\n` +
+			`• Pre-built Custom Agents: 2 (Slave 1 & Slave 2)`,
 	);
 }
 

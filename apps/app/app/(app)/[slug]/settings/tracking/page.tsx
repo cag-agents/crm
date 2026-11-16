@@ -25,8 +25,8 @@ export default function TrackingSettingsPage() {
 				<PageShellHeading>
 					<PageShellTitle>Tracking &amp; Analytics</PageShellTitle>
 					<PageShellDescription>
-						Track website visitors and automatically add contacts when a form is
-						submitted.
+						Track Link-in-Bio traffic, Merch Store visitors, and Sponsor UTM
+						Campaign attribution across YouTube, Instagram, and WhatsApp.
 					</PageShellDescription>
 				</PageShellHeading>
 			</PageShellHeader>

@@ -4,9 +4,9 @@ import type { FieldEntity } from "./fields-entity";
 export const SHEET_TITLE = "Fields";
 
 const SUBTITLE = {
-	company: "This shapes every company in your CRM.",
-	contact: "This shapes every contact in your CRM.",
-	deal: "This shapes every deal in your CRM.",
+	company: "This shapes every brand and sponsor in your CRM.",
+	contact: "This shapes every talent and contact in your CRM.",
+	deal: "This shapes every brand collab in your CRM.",
 } satisfies Record<RecordKind, string>;
 
 export function subtitleFor(kind: RecordKind): string {
@@ -62,21 +62,21 @@ export const ARCHIVE = "Archive";
 export const FILL_REST = "Fill the rest";
 
 const SHEET_PLACEMENT = {
-	COMPANY: "Show on the company sheet",
-	CONTACT: "Show on the contact sheet",
-	DEAL: "Show on the deal sheet",
+	COMPANY: "Show on the brand sheet",
+	CONTACT: "Show on the talent sheet",
+	DEAL: "Show on the collab sheet",
 } satisfies Record<FieldEntity, string>;
 
 const TABLE_PLACEMENT = {
-	COMPANY: "Offer as a column on the Companies table",
-	CONTACT: "Offer as a column on the Contacts table",
-	DEAL: "Offer as a column on the Deals table",
+	COMPANY: "Offer as a column on the Brands table",
+	CONTACT: "Offer as a column on the Talent table",
+	DEAL: "Offer as a column on the Collabs table",
 } satisfies Record<FieldEntity, string>;
 
 const FILTER_PLACEMENT = {
-	COMPANY: "Offer as a filter on the Companies table",
-	CONTACT: "Offer as a filter on the Contacts table",
-	DEAL: "Offer as a filter on the Deals table",
+	COMPANY: "Offer as a filter on the Brands table",
+	CONTACT: "Offer as a filter on the Talent table",
+	DEAL: "Offer as a filter on the Collabs table",
 } satisfies Record<FieldEntity, string>;
 
 export function sheetPlacement(entity: FieldEntity): string {
@@ -92,7 +92,7 @@ export function filterPlacement(entity: FieldEntity): string {
 }
 
 export const ENTITY_TABS = [
-	{ kind: "company", label: "Companies" },
-	{ kind: "contact", label: "Contacts" },
-	{ kind: "deal", label: "Deals" },
+	{ kind: "company", label: "Brands & Sponsors" },
+	{ kind: "contact", label: "Talent & Network" },
+	{ kind: "deal", label: "Brand Collabs" },
 ] as const satisfies readonly { kind: RecordKind; label: string }[];

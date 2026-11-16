@@ -62,9 +62,10 @@ describe("normalizeCurrency and isCurrencyCode", () => {
 		}
 	});
 
-	it("offers only the eleven currencies most of the world trades in", () => {
+	it("offers only the twelve currencies most of the world trades in", () => {
 		expect(CURRENCIES.map((entry) => entry.code)).toEqual([
 			"USD",
+			"INR",
 			"EUR",
 			"JPY",
 			"GBP",

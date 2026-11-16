@@ -46,7 +46,7 @@ import { SalesDashboard } from "./sales-dashboard";
 
 const CELL = "px-3 py-2.5 align-middle";
 const OPEN_COLUMNS: SimpleTableColumn[] = [
-	{ id: "deal", header: "Deal" },
+	{ id: "deal", header: "Brand Collab" },
 	{
 		id: "stage",
 		header: "Stage",
@@ -63,20 +63,20 @@ const OPEN_COLUMNS: SimpleTableColumn[] = [
 ];
 const TASK_COLUMNS: SimpleTableColumn[] = [
 	{ id: "done", srLabel: "Done", width: "w-8" },
-	{ id: "task", header: "Task" },
+	{ id: "task", header: "Deliverable / Task" },
 	{ id: "overdue", header: "Overdue", width: "w-24", align: "right" },
 ];
 const ACTIVITY_COLUMNS: SimpleTableColumn[] = [
 	{ id: "activity", header: "Activity" },
 	{
 		id: "company",
-		header: "Company",
+		header: "Brand",
 		width: "w-44",
 		className: "hidden md:table-cell",
 	},
 	{
 		id: "deal",
-		header: "Deal",
+		header: "Collab",
 		width: "w-48",
 		className: "hidden lg:table-cell",
 	},
@@ -134,13 +134,13 @@ export function DashboardSummary() {
 			<div className="grid gap-6 @3xl/page-content:grid-cols-2">
 				<Card className="min-w-0">
 					<CardHeader>
-						<CardTitle>Deals in progress</CardTitle>
+						<CardTitle>Active Brand Collabs</CardTitle>
 						<CardDescription>
-							The largest open deals, and how long each has sat in its stage
+							The largest open brand collabs, and production pipeline status
 						</CardDescription>
 						<CardAction>
 							<Button asChild variant="contrast" size="sm">
-								<Link href={workspaceUrl("/deals")}>Open deals</Link>
+								<Link href={workspaceUrl("/deals")}>All collabs</Link>
 							</Button>
 						</CardAction>
 					</CardHeader>
@@ -198,11 +198,11 @@ export function DashboardSummary() {
 
 				<Card className="min-w-0">
 					<CardHeader>
-						<CardTitle>Overdue tasks</CardTitle>
+						<CardTitle>Sponsored Content Deliverables & Tasks</CardTitle>
 						<CardDescription>
 							{overdueTasks.length === 0
-								? "Every task you have logged is either done or still to come"
-								: `${formatCount(overdueTasks.length, "task")} past due`}
+								? "Every sponsored deliverable and task is on schedule"
+								: `${formatCount(overdueTasks.length, "deliverable")} past due`}
 						</CardDescription>
 					</CardHeader>
 					<CardPanel>
@@ -274,7 +274,9 @@ export function DashboardSummary() {
 					</CardDescription>
 					<CardAction>
 						<Button asChild variant="contrast" size="sm">
-							<Link href={workspaceUrl("/companies")}>All companies</Link>
+							<Link href={workspaceUrl("/companies")}>
+								All brands & sponsors
+							</Link>
 						</Button>
 					</CardAction>
 				</CardHeader>

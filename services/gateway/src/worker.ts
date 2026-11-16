@@ -11,7 +11,7 @@
 import { Worker } from "bullmq";
 import { Kafka, Partitioners } from "kafkajs";
 import { redis } from "./redis";
-import { KAFKA_TOPICS, type WebhookEvent, type ChannelType } from "./types";
+import { KAFKA_TOPICS, type WebhookEvent } from "./types";
 
 // ── Kafka Producer ──────────────────────────────────────────────────────────
 

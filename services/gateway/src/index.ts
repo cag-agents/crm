@@ -31,7 +31,53 @@ const app = new Hono();
 app.use("*", logger());
 app.use("*", cors());
 
-// ── Health Check ────────────────────────────────────────────────────────────
+// ── Root & Health Check ────────────────────────────────────────────────────────
+
+app.get("/", (c) => {
+	const accept = c.req.header("accept") || "";
+	if (accept.includes("text/html")) {
+		return c.html(`
+			<!DOCTYPE html>
+			<html lang="en">
+			<head>
+				<meta charset="UTF-8">
+				<title>Edge API Gateway — CAG CRM</title>
+				<style>
+					body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b0f19; color: #f1f5f9; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+					.card { background: #131b2e; border: 1px solid #1e293b; padding: 2.5rem; border-radius: 12px; max-width: 480px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+					h1 { margin-top: 0; font-size: 1.5rem; color: #38bdf8; }
+					p { color: #94a3b8; font-size: 0.95rem; line-height: 1.5; }
+					.badge { display: inline-block; background: #0284c7; color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; margin-bottom: 1rem; }
+					a.btn { display: inline-block; background: #0284c7; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.95rem; margin-top: 1.25rem; transition: background 0.2s; }
+					a.btn:hover { background: #0369a1; }
+				</style>
+			</head>
+			<body>
+				<div class="card">
+					<div class="badge">Port 3002 • Edge API Gateway</div>
+					<h1>Omnichannel Webhook Gateway</h1>
+					<p>This service receives and decouples webhooks (Instagram, WhatsApp, Telegram) in &lt;50ms before queueing them to Redis.</p>
+					<p>To browse and interact with the <strong>Creator CRM Web UI</strong>, visit port 3000:</p>
+					<a href="http://localhost:3000" class="btn">Open Creator CRM UI (localhost:3000) &rarr;</a>
+				</div>
+			</body>
+			</html>
+		`);
+	}
+
+	return c.json({
+		status: "ok",
+		service: "edge-api-gateway",
+		port: 3002,
+		crmAppUrl: "http://localhost:3000",
+		endpoints: {
+			health: "/health",
+			metaWebhooks: "/webhooks/meta",
+			telegramWebhooks: "/webhooks/telegram",
+		},
+		timestamp: new Date().toISOString(),
+	});
+});
 
 app.get("/health", (c) => {
 	return c.json({

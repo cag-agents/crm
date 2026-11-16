@@ -9,7 +9,8 @@
 		"start": "bun run dist/index.js",
 		"lint": "biome lint src/",
 		"check-types": "tsc --noEmit",
-		"test": "bun test"
+		"test": "bun test",
+		"simulate": "bun run scripts/simulate-viva.ts"
 	},
 	"dependencies": {
 		"bullmq": "^5.0.0",

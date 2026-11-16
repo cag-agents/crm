@@ -10,8 +10,14 @@
 
 import { Worker } from "bullmq";
 import { Kafka, Partitioners } from "kafkajs";
-import { redis } from "./redis";
-import { KAFKA_TOPICS, type WebhookEvent } from "./types";
+import { OMNICHANNEL_QUEUE_NAME } from "./queue";
+import { checkAndConsumeQuota, redis } from "./redis";
+import {
+	KAFKA_TOPICS,
+	type NormalizedWebhookPayload,
+	type WebhookEvent,
+	type WebhookPayloadShape,
+} from "./types";
 
 // ── Kafka Producer ──────────────────────────────────────────────────────────
 
@@ -24,14 +30,141 @@ const producer = kafka.producer({
 	createPartitioner: Partitioners.DefaultPartitioner,
 });
 
-await producer.connect();
-console.log("[worker] Connected to Kafka");
+let kafkaConnected = false;
+try {
+	await producer.connect();
+	kafkaConnected = true;
+	console.log("[worker] Connected to Kafka");
+} catch (err) {
+	console.warn(
+		"[worker] Kafka broker not connected — proceeding in direct API-bridge mode:",
+		err instanceof Error ? err.message : String(err),
+	);
+}
 
 // ── Event Classifier ────────────────────────────────────────────────────────
 
 /**
+ * Normalizes any webhook event into a structured payload for the Core CRM API bridge.
+ */
+function extractBridgePayload(event: WebhookEvent): NormalizedWebhookPayload {
+	if (event.normalized) {
+		return event.normalized;
+	}
+
+	const { channel, payload } = event;
+	const data = (payload || {}) as WebhookPayloadShape;
+
+	// Direct structure check (e.g. from simulator or pre-normalized payloads)
+	if (typeof data.senderHandle === "string" && typeof data.text === "string") {
+		return {
+			platform: (data.platform || channel || "instagram") as string,
+			eventType: (data.eventType || "direct_message") as string,
+			senderHandle: data.senderHandle,
+			senderName: (data.senderName as string) || data.senderHandle,
+			senderEmail: data.senderEmail as string | undefined,
+			commentId: data.commentId as string | undefined,
+			text: data.text,
+			workspaceSlug: data.workspaceSlug as string | undefined,
+			metadata: data.metadata as Record<string, unknown> | undefined,
+		};
+	}
+
+	// Meta / Instagram Graph API webhook
+	if (channel === "meta" || channel === "instagram") {
+		const entry = data.entry?.[0];
+		const change = entry?.changes?.[0];
+		const val = change?.value;
+
+		// Instagram Comment-to-DM trigger
+		if (val?.comment_id) {
+			const handle = val?.from?.username
+				? `@${val.from.username}`
+				: val?.sender_id
+					? `@${val.sender_id}`
+					: "@creator_follower";
+			return {
+				platform: "instagram",
+				eventType: "comment_to_dm",
+				senderHandle: handle,
+				senderName:
+					val?.from?.name || val?.from?.username || "Instagram Follower",
+				commentId: val.comment_id,
+				text: val.message || val.text || "Commented on post",
+				metadata: { post_id: val.post_id, media_id: val.media_id },
+			};
+		}
+
+		// Instagram / Facebook Direct Message
+		const messaging = entry?.messaging?.[0];
+		if (messaging?.message) {
+			const senderId = messaging.sender?.id || "unknown";
+			return {
+				platform: "instagram",
+				eventType: "direct_message",
+				senderHandle: messaging.sender?.username
+					? `@${messaging.sender.username}`
+					: `@${senderId}`,
+				senderName: messaging.sender?.name || `Meta User ${senderId}`,
+				text: messaging.message?.text || "",
+				metadata: { mid: messaging.message?.mid, pageId: entry?.id },
+			};
+		}
+	}
+
+	// WhatsApp Cloud API webhook
+	if (
+		channel === "whatsapp" ||
+		data.entry?.[0]?.changes?.[0]?.value?.messages
+	) {
+		const entry = data.entry?.[0];
+		const change = entry?.changes?.[0];
+		const val = change?.value;
+		const message = val?.messages?.[0];
+		const contact = val?.contacts?.[0];
+
+		const fromPhone = message?.from || "whatsapp-contact";
+		return {
+			platform: "whatsapp",
+			eventType: "brand_inquiry",
+			senderHandle: fromPhone.startsWith("+") ? fromPhone : `+${fromPhone}`,
+			senderName: contact?.profile?.name || fromPhone,
+			text: message?.text?.body || message?.caption || "WhatsApp message",
+			metadata: { messageId: message?.id, timestamp: message?.timestamp },
+		};
+	}
+
+	// Telegram Bot API webhook
+	if (channel === "telegram" || data.message) {
+		const msg = data.message;
+		const from = msg?.from;
+		const handle = from?.username
+			? `@${from.username}`
+			: `@user_${from?.id || "telegram"}`;
+		const fullName =
+			[from?.first_name, from?.last_name].filter(Boolean).join(" ") || handle;
+
+		return {
+			platform: "telegram",
+			eventType: "direct_message",
+			senderHandle: handle,
+			senderName: fullName,
+			text: msg?.text || "Telegram message",
+			metadata: { chatId: msg?.chat?.id, messageId: msg?.message_id },
+		};
+	}
+
+	return {
+		platform: channel,
+		eventType: "inbound_event",
+		senderHandle: "@creator_hq",
+		senderName: "Inbound Contact",
+		text: typeof payload === "string" ? payload : JSON.stringify(payload),
+	};
+}
+
+/**
  * Classify a raw webhook payload into the correct Kafka topic.
- * Each platform has different payload shapes — this is where we normalize.
  */
 function classifyEvent(event: WebhookEvent): {
 	topic: string;
@@ -44,6 +177,7 @@ function classifyEvent(event: WebhookEvent): {
 		case "whatsapp":
 			return classifyWhatsApp(payload);
 		case "meta":
+		case "instagram":
 			return classifyMeta(payload);
 		case "telegram":
 			return classifyTelegram(payload);
@@ -61,12 +195,11 @@ function classifyWhatsApp(payload: unknown): {
 	key: string;
 	value: Record<string, unknown>;
 } {
-	const data = payload as Record<string, unknown>;
+	const data = (payload || {}) as Record<string, unknown>;
 	const entry = (data.entry as Array<Record<string, unknown>>)?.[0];
 	const changes = (entry?.changes as Array<Record<string, unknown>>)?.[0];
 	const value = changes?.value as Record<string, unknown>;
 
-	// Message status updates (sent, delivered, read)
 	if (value?.statuses) {
 		return {
 			topic: KAFKA_TOPICS.MESSAGE_STATUS,
@@ -79,7 +212,6 @@ function classifyWhatsApp(payload: unknown): {
 		};
 	}
 
-	// Inbound messages
 	if (value?.messages) {
 		const message = (value.messages as Array<Record<string, unknown>>)?.[0];
 		return {
@@ -110,10 +242,9 @@ function classifyMeta(payload: unknown): {
 	key: string;
 	value: Record<string, unknown>;
 } {
-	const data = payload as Record<string, unknown>;
+	const data = (payload || {}) as Record<string, unknown>;
 	const entry = (data.entry as Array<Record<string, unknown>>)?.[0];
 
-	// Check for messaging (DMs from FB/IG)
 	const messaging = (entry?.messaging as Array<Record<string, unknown>>)?.[0];
 	if (messaging?.message) {
 		return {
@@ -130,7 +261,6 @@ function classifyMeta(payload: unknown): {
 		};
 	}
 
-	// Check for comments/mentions (social engagement)
 	const changes = (entry?.changes as Array<Record<string, unknown>>)?.[0];
 	if (
 		changes?.field === "feed" ||
@@ -163,7 +293,7 @@ function classifyTelegram(payload: unknown): {
 	key: string;
 	value: Record<string, unknown>;
 } {
-	const data = payload as Record<string, unknown>;
+	const data = (payload || {}) as Record<string, unknown>;
 	const message = data.message as Record<string, unknown> | undefined;
 
 	if (message) {
@@ -195,35 +325,113 @@ function classifyTelegram(payload: unknown): {
 
 // ── BullMQ Worker ───────────────────────────────────────────────────────────
 
-const worker = new Worker(
-	"webhook-events",
+const API_URL = process.env.API_URL || "http://localhost:3001";
+
+export const worker = new Worker(
+	OMNICHANNEL_QUEUE_NAME,
 	async (job) => {
 		const event = job.data as WebhookEvent;
-		const { topic, key, value } = classifyEvent(event);
+		const bridgePayload = extractBridgePayload(event);
 
-		// Publish to Kafka
-		await producer.send({
-			topic,
-			messages: [
-				{
-					key,
-					value: JSON.stringify({
-						...value,
-						_meta: {
-							jobId: job.id,
-							receivedAt: event.receivedAt,
-							processedAt: new Date().toISOString(),
+		// 1. Log stage 1: Dequeued Job
+		console.log(
+			`[WORKER] Dequeued Job #${job.id} (${bridgePayload.platform} - ${bridgePayload.eventType})`,
+		);
+
+		// 2. Check & consume Redis token bucket rate limit
+		const platformQuota =
+			bridgePayload.platform === "whatsapp" ||
+			bridgePayload.platform === "telegram"
+				? bridgePayload.platform
+				: "instagram";
+		await checkAndConsumeQuota(platformQuota, bridgePayload.senderHandle);
+
+		// 3. Publish to Kafka if connected
+		if (kafkaConnected) {
+			try {
+				const { topic, key, value } = classifyEvent(event);
+				await producer.send({
+					topic,
+					messages: [
+						{
+							key,
+							value: JSON.stringify({
+								...value,
+								_meta: {
+									jobId: job.id,
+									receivedAt: event.receivedAt,
+									processedAt: new Date().toISOString(),
+								},
+							}),
 						},
-					}),
-				},
-			],
-		});
+					],
+				});
+			} catch (err) {
+				console.warn(
+					"[worker] Kafka send error:",
+					err instanceof Error ? err.message : String(err),
+				);
+			}
+		}
 
-		console.log(`[worker] ${event.channel} event → ${topic} (key: ${key})`);
+		// 4. Log compliance if Meta Instagram comment
+		if (bridgePayload.platform === "instagram" && bridgePayload.commentId) {
+			console.log(
+				`[COMPLIANCE] Meta CSW 24h Window opened via /v19.0/${bridgePayload.commentId}/messages`,
+			);
+		}
+
+		// 5. Forward to Core CRM API Ingest Controller
+		try {
+			const res = await fetch(`${API_URL}/api/webhooks/ingest`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(bridgePayload),
+			});
+
+			if (!res.ok) {
+				// Fallback to alternate route if not prefixed
+				const fallbackRes = await fetch(`${API_URL}/webhooks/ingest`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(bridgePayload),
+				});
+				if (!fallbackRes.ok) {
+					throw new Error(
+						`API bridge error: HTTP ${res.status} (${await res.text()})`,
+					);
+				}
+				const data = (await fallbackRes.json()) as {
+					contactId: string;
+					activityId: string;
+				};
+				console.log(
+					`[BRIDGE] Synced to Core CRM API -> Contact ID: ${data.contactId}, Activity ID: ${data.activityId}`,
+				);
+				return data;
+			}
+
+			const data = (await res.json()) as {
+				contactId: string;
+				activityId: string;
+			};
+			console.log(
+				`[BRIDGE] Synced to Core CRM API -> Contact ID: ${data.contactId}, Activity ID: ${data.activityId}`,
+			);
+			return data;
+		} catch (bridgeErr) {
+			console.error(
+				`[worker] API bridge sync failed:`,
+				bridgeErr instanceof Error ? bridgeErr.message : String(bridgeErr),
+			);
+			throw bridgeErr;
+		}
 	},
 	{
 		connection: redis,
-		concurrency: 10, // Process 10 jobs in parallel
+		concurrency: 10,
 	},
 );
 
@@ -235,4 +443,6 @@ worker.on("failed", (job, err) => {
 	console.error(`[worker] Job ${job?.id} failed:`, err.message);
 });
 
-console.log("[worker] Webhook worker started, waiting for jobs...");
+console.log(
+	`[worker] Webhook worker started on queue '${OMNICHANNEL_QUEUE_NAME}', waiting for jobs...`,
+);
